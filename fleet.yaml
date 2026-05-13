@@ -23,12 +23,6 @@ skills_repo:
 secrets:
   provider: env # secrets read from environment variables at render time
 
-# Where `fleetmind render` writes its outputs. Override per fleet.yaml when
-# running multi-fleet from one repo (e.g. fleet-a.yaml writes to
-# workspaces/fleet-a.derived.tfvars).
-outputs:
-  openclaw_json: ./rendered/openclaw.json
-  terraform_vars: ./workspaces/default.derived.tfvars
 
 # ContextStore — shared cross-agent KV state. Must match the table the
 # terraform-aws-fleetmind module provisions (default name: "fleetmind-<fleet>").

@@ -17,18 +17,11 @@ agent_instance_types = {
 
 # ── Per-agent gateway ports ─────────────────────────────────────────────────
 # Each agent needs a unique port. Convention: start at 18789 and increment.
-# IMPORTANT: every agent in fleet.yaml's agents.list MUST have an entry here
-# (keys must exactly match agent IDs). Terraform errors with a missing-key
-# message at plan time otherwise.
-agent_ports = {
-  blanket = 18789
-  charlie = 18790
-}
 
 # ── Software pins ───────────────────────────────────────────────────────────
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.4.12"
+fleetmind_version = "0.4.13"
 
 # ── Delegation substrate ────────────────────────────────────────────────────
 # Task-ledger DDB + S3 narratives + EventBridge Pipe. Default true.

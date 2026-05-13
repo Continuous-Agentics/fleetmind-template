@@ -109,10 +109,12 @@ fleetmind-template/
            --value "ghp_yourPATgoeshere" \
            --region us-west-2
     ```
-8. *Push updated fleet state to running agents*:
+8. *Push fleet state to running agents*:
     ```bash
-    fleetmind push fleet    # syncs fleet.yaml + skills to each running agent
+    fleetmind push fleet --restart    # syncs workspace + skills to each agent and restarts
     ```
+    This pushes each agent's rendered workspace (including `openclaw.json` and skills) plus a copy of `fleet.yaml` so the bots can run `fleetmind` CLI commands themselves (e.g. `fleetmind status`, `fleetmind task`). The `--restart` flag triggers the first start of the OpenClaw gateway service on each instance.
+
     Note: `bot_user_id` was already populated in step 3 via `--interactive`. If you skipped that or need to re-discover (e.g. after rotating a bot token), run:
     ```bash
     fleetmind slack discover    # reads from Secrets Manager (after step 7a)

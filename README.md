@@ -1,6 +1,10 @@
 # fleetmind-template
 
-Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Fork or clone this repo, edit `fleet.yaml`, and either run the guided wizard or follow the manual steps below.
+> ⚠️ **This is a GitHub template repo — do not fork it.**
+> Click [**Use this template**](../../generate) to create your own fleet repo, then clone that.
+> Forking gives you the wrong git history and no clean way to stay current.
+
+Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Create a repo from this template, edit `fleet.yaml`, and either run the guided wizard or follow the manual steps below.
 
 This repo *consumes* [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) as a module (currently pinned to `v0.1.3`). Bump `?ref=` in `main.tf` to upgrade.
 

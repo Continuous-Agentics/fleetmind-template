@@ -56,64 +56,46 @@ fleetmind-template/
     ```
     Generates one `docs/slack-manifests/<agent>.yaml` per agent. For each manifest:
     1. Go to <https://api.slack.com/apps?new_app=1> → *Create New App* → *From a manifest* → paste the YAML.
-    2. Install the app into your Slack workspace and capture: *Bot User OAuth Token* (`xoxb-...`), *Signing Secret*, and an *App-Level Token* with `connections:write` scope (`xapp-...`).
-    3. Export the token env vars referenced in `fleet.yaml` *in your local shell* (only needed for the `fleetmind slack discover` step below; the bots themselves read tokens from Secrets Manager later):
-        ```bash
-        export BLANKET_BOT_TOKEN=xoxb-...
-        export BLANKET_APP_TOKEN=xapp-...
-        # repeat per agent
-        ```
-    4. Invite each bot to its intended Slack channels and copy each channel's ID into `fleet.yaml`'s `slack.channels` list.
-4. *Populate the `bot_user_id` fields in `fleet.yaml`*:
-    ```bash
-    fleetmind slack discover
-    ```
-    Calls Slack `auth.test` for each agent using the bot tokens from step 3 and writes `bot_user_id` back into `fleet.yaml`.
-5. *Create GitHub Apps* — one per agent. Each bot uses its own GitHub App to authenticate to GitHub (clone repos, open PRs, etc.).
+    2. Install the app into your Slack workspace and capture: *Bot User OAuth Token* (`xoxb-...`), *Signing Secret*, and an *App-Level Token* with `connections:write` scope (`xapp-...`). Hold these somewhere safe — you'll enter them in step 7a.
+    3. Create the Slack channels each bot will live in, invite each bot to its channels, and copy each channel's ID into `fleet.yaml`'s `slack.channels` list. *Channels must be filled in before render* because `wake_target_session_key` is derived from the PM's first channel.
+4. *Create GitHub Apps* — one per agent. Each bot uses its own GitHub App to authenticate to GitHub (clone repos, open PRs, etc.).
     1. Go to <https://github.com/organizations/YOUR-ORG/settings/apps/new> (or your personal apps page) → register a new GitHub App per agent. Suggested settings: webhook off, permissions scoped to what the bot needs (e.g. *Repository contents: Read & write*, *Pull requests: Read & write*, *Issues: Read & write*).
-    2. Generate and download a *private key* (`.pem`) for the app. Keep it offline — it goes into AWS SSM in step 9, not into git.
+    2. Generate and download a *private key* (`.pem`) for the app. Keep it offline — it goes into AWS SSM in step 7b, not into git.
     3. *Install the app* on the org/account whose repos the bot needs access to. Capture the *Installation ID* from the URL after install (e.g. `https://github.com/organizations/YOUR-ORG/settings/installations/<INSTALLATION_ID>`) or via `gh api /app/installations`.
     4. From the app's settings page, also capture the *App ID* (top of the General page).
     5. Per agent, you should now have: app ID, installation ID, `.pem` file path.
-6. *Render the fleet.yaml-derived tfvars*:
+5. *Render the fleet.yaml-derived tfvars*:
     ```bash
     fleetmind render
     ```
     Produces `workspaces/default.derived.tfvars` (gitignored). Re-run whenever `fleet.yaml` changes.
-7. *Initialize Terraform*:
+6. *Initialize + apply Terraform*:
     ```bash
     terraform init -backend-config=backend.hcl
     terraform workspace new my-fleet
-    ```
-8. *Apply*:
-    ```bash
     terraform apply \
       -var-file=workspaces/default.tfvars \
       -var-file=workspaces/default.derived.tfvars
     ```
-9. *Populate secrets* (the EC2s are running but agents will crash-loop until secrets are in place):
+    This creates per-agent placeholder secrets in Secrets Manager (real values get pushed in the next step). The EC2 instances boot but agents will crash-loop until the placeholders are replaced.
+7. *Populate secrets*:
 
-    *9a. Slack + Anthropic credentials* (AWS Secrets Manager, per agent):
+    *7a. Slack + Anthropic credentials* (Secrets Manager, per agent) — prompts for each missing credential with hidden input:
     ```bash
-    aws secretsmanager put-secret-value \
-      --secret-id my-fleet/agents/blanket/slack \
-      --secret-string '{"SLACK_BOT_TOKEN":"xoxb-...","SLACK_SIGNING_SECRET":"...","SLACK_APP_TOKEN":"xapp-..."}'
-
-    aws secretsmanager put-secret-value \
-      --secret-id my-fleet/agents/blanket/anthropic \
-      --secret-string '{"ANTHROPIC_API_KEY":"sk-ant-..."}'
+    fleetmind secrets populate --interactive
     ```
+    Uses the agent IDs and token env-var names declared in `fleet.yaml` to figure out what to ask for, and writes JSON blobs into `<fleet>/agents/<agent>/slack` and `<fleet>/agents/<agent>/anthropic`. Re-run any time you rotate a token. Non-interactive alternatives: `--from .env.production` or pre-export env vars matching the names in `fleet.yaml` (see `fleetmind secrets populate --help`).
 
-    *9b. GitHub App credentials* (AWS SSM Parameter Store, per agent) — use the `fleetmind` CLI which writes the three required parameters at the right paths:
+    *7b. GitHub App credentials* (SSM Parameter Store, per agent):
     ```bash
     fleetmind github-app store \
       --fleet my-fleet --agent blanket \
       --app-id 123456 --installation-id 78901234 \
       --pem-file ./blanket-github-app.pem
     ```
-    Repeat per agent. The CLI writes `app-id`, `installation-id`, and `pem` under `/fleetmind/my-fleet/agents/<agent>/github-app/`.
+    Repeat per agent. Writes `app-id`, `installation-id`, and `pem` under `/fleetmind/my-fleet/agents/<agent>/github-app/`.
 
-    *9c. GitHub Packages PAT* (one-time, fleet-wide) — the bots install the `fleetmind` CLI from GitHub Packages, which needs a PAT with `read:packages` scope. Stored once under a shared path that every agent in the fleet can read:
+    *7c. GitHub Packages PAT* (one-time, fleet-wide) — bots install the `fleetmind` CLI from GitHub Packages, which needs a PAT with `read:packages` scope:
     ```bash
     aws ssm put-parameter \
       --name /fleetmind/shared/github-packages-token \
@@ -121,11 +103,16 @@ fleetmind-template/
       --value "ghp_yourPATgoeshere" \
       --region us-west-2
     ```
-10. *Verify*:
+8. *Discover `bot_user_id`s and push to running agents*:
     ```bash
-    terraform output ssm_connect       # SSM commands to reach each bot
-    fleetmind push-fleet               # push workspace config to running agents
+    fleetmind slack discover    # reads bot tokens from SM, calls auth.test, writes bot_user_id back to fleet.yaml
+    fleetmind push-fleet        # syncs the updated fleet.yaml + skills to each running agent
     ```
+9. *Verify*:
+    ```bash
+    terraform output ssm_connect    # SSM Session Manager commands per agent
+    ```
+    Use one of those to shell in, then `journalctl -u openclaw-<agent>` to confirm the agent service is healthy.
 
 ## Upgrading the module
 

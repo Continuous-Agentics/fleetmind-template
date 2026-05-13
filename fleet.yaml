@@ -87,6 +87,11 @@ agents:
         can_send_to: [charlie]
       delegation:
         worker_bots: [charlie]
+        sweeps:
+          - name: charlie-sweep
+            worker_id: charlie
+            every: 15m
+            description: "Periodic sweep to close open delegations with Charlie"
 
     # ── Worker bot ───────────────────────────────────────────────────────────
     - id: charlie

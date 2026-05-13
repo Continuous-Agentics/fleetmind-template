@@ -28,7 +28,7 @@ agent_ports = {
 # ── Software pins ───────────────────────────────────────────────────────────
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.4.6"
+fleetmind_version = "0.4.8"
 
 # ── Delegation substrate ────────────────────────────────────────────────────
 # Task-ledger DDB + S3 narratives + EventBridge Pipe. Default true.

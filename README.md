@@ -1,8 +1,8 @@
 # fleetmind-template
 
-Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Fork or clone this repo, edit a few files, and `terraform apply` to stand up a multi-bot fleet on AWS.
+Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Fork or clone this repo, edit `fleet.yaml`, and either run the guided wizard or follow the manual steps below.
 
-This repo *consumes* [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) as a module (currently pinned to `v0.1.0`). It does not vendor the module's source — bump the `?ref=` in `main.tf` to upgrade.
+This repo *consumes* [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) as a module (currently pinned to `v0.1.3`). Bump `?ref=` in `main.tf` to upgrade.
 
 ## Layout
 
@@ -28,7 +28,7 @@ fleetmind-template/
 - AWS account with admin or equivalent permissions
 - Terraform `>= 1.5`
 - Node.js `>= 22`
-- `@continuous-agentics/fleetmind >= 0.4.4` CLI: `npm install -g @continuous-agentics/fleetmind` *(requires GitHub Packages auth — see the [Fleetmind README](https://github.com/Continuous-Agentics/fleetmind))*
+- `@continuous-agentics/fleetmind >= 0.4.19` CLI: `npm install -g @continuous-agentics/fleetmind` *(requires GitHub Packages auth — see the [Fleetmind README](https://github.com/Continuous-Agentics/fleetmind))*
 - Slack workspace admin (for creating per-bot Slack apps)
 
 ## One-time setup per operator
@@ -44,135 +44,154 @@ fleetmind-template/
       --billing-mode PAY_PER_REQUEST \
       --region us-west-2
     ```
-3. *Copy `backend.example.hcl` to `backend.hcl`* and fill in the bucket/region/table you just created. `backend.hcl` is gitignored — operator-local.
+3. *Copy `backend.example.hcl` to `backend.hcl`* and fill in the bucket/region/table. `backend.hcl` is gitignored — operator-local.
 
-## Per-fleet workflow
+---
 
-1. *Edit `fleet.yaml`* — set `fleet.name`, declare your agents (PMs + workers), wire up token env-var names. Leave `bot_user_id` and `channels` as `REPLACE_ME` for now — you'll fill them in after creating the Slack apps.
-2. *Edit `workspaces/default.tfvars`* — region, EC2 sizing, per-agent ports, software pins, opt-ins for VPC endpoints, BYO VPC, etc.
-3. *Create Slack apps* — one per agent.
-    ```bash
-    fleetmind slack manifests --out docs/slack-manifests
-    ```
-    Generates one `docs/slack-manifests/<agent>.yaml` per agent. (Default output is `./rendered/slack-manifests/` which is gitignored; `docs/` is checked in so manifests are reviewable in PRs.) For each manifest:
-    1. Go to <https://api.slack.com/apps?new_app=1> → *Create New App* → *From a manifest* → paste the YAML.
-    2. Install the app into your Slack workspace and capture: *Bot User OAuth Token* (`xoxb-...`), *Signing Secret*, and an *App-Level Token* with `connections:write` scope (`xapp-...`). Hold these somewhere safe — you'll enter them in step 7a.
-    3. Create the Slack channels each bot will live in, invite each bot to its channels, and copy each channel's ID into `fleet.yaml`'s `slack.channels` list. *Channels must be filled in before render* because `wake_target_session_key` is derived from the PM's first channel.
-    4. Run `fleetmind slack discover --interactive` to populate `bot_user_id` in `fleet.yaml` right now (prompts for each agent's bot token with hidden input — no AWS needed):
-        ```bash
-        fleetmind slack discover --interactive
-        ```
-4. *Create GitHub Apps* — one per agent. Each bot uses its own GitHub App to authenticate to GitHub (clone repos, open PRs, etc.).
-    1. Go to <https://github.com/organizations/YOUR-ORG/settings/apps/new> (or your personal apps page) → register a new GitHub App per agent. Suggested settings: webhook off, permissions scoped to what the bot needs (e.g. *Repository contents: Read & write*, *Pull requests: Read & write*, *Issues: Read & write*).
-    2. Generate and download a *private key* (`.pem`) for the app. Keep it offline — it goes into AWS SSM in step 7b, not into git.
-    3. *Install the app* on the org/account whose repos the bot needs access to. Capture the *Installation ID* from the URL after install: `https://github.com/organizations/YOUR-ORG/settings/installations/<INSTALLATION_ID>`.
-    4. From the app's settings page, also capture the *App ID* (top of the General page).
-    5. Per agent, you should now have: app ID, installation ID, `.pem` file path.
-5. *Render the fleet.yaml-derived tfvars*:
-    ```bash
-    fleetmind render
-    ```
-    Produces `workspaces/default.derived.tfvars` (gitignored). Re-run whenever `fleet.yaml` changes.
-6. *Initialize + apply Terraform*:
-    ```bash
-    terraform init -backend-config=backend.hcl
-    terraform workspace new my-fleet
-    terraform apply \
-      -var-file=workspaces/default.tfvars \
-      -var-file=workspaces/default.derived.tfvars
-    ```
-    This creates per-agent placeholder secrets in Secrets Manager (real values get pushed in the next step). The EC2 instances boot but agents will crash-loop until the placeholders are replaced.
-7. *Populate secrets*:
+## Guided onboarding (recommended)
 
-    *7a. Slack + Anthropic credentials* (Secrets Manager, per agent) — prompts for each missing credential with hidden input:
-    ```bash
-    fleetmind secrets populate --interactive
-    ```
-    Uses the agent IDs and token env-var names declared in `fleet.yaml` to figure out what to ask for, and writes JSON blobs into `<fleet>/agents/<agent>/slack` and `<fleet>/agents/<agent>/anthropic`. Re-run any time you rotate a token. Non-interactive alternatives: `--from .env.production` or pre-export env vars matching the names in `fleet.yaml` (see `fleetmind secrets populate --help`).
+`fleetmind onboard` is an interactive wizard that walks through every step, collects credentials inline, and drives all the fleetmind commands automatically.
 
-    *7b. GitHub App credentials* (SSM Parameter Store, per agent):
-    ```bash
-    fleetmind github-app store \
-      --fleet my-fleet --agent blanket \
-      --app-id 123456 --installation-id 78901234 \
-      --pem-file ./blanket-github-app.pem
-    ```
-    Repeat per agent. Writes `app-id`, `installation-id`, and `pem` under `/fleetmind/my-fleet/agents/<agent>/github-app/`.
+```bash
+# Edit fleet.yaml and workspaces/default.tfvars first, then:
+fleetmind onboard
+```
 
-    *7c. GitHub Packages PAT* (one-time, shared across all fleets in the account) — the bots need a PAT with `read:packages` scope stored in SSM to install the `fleetmind` CLI during bootstrap. This is created once per AWS account and persists across fleet deployments:
-    ```bash
-    # Only needed if not already present in the account
-    aws ssm get-parameter --name /fleetmind/shared/github-packages-token --region us-west-2 2>/dev/null \
-      || aws ssm put-parameter \
-           --name /fleetmind/shared/github-packages-token \
-           --type SecureString \
-           --value "ghp_yourPATgoeshere" \
-           --region us-west-2
-    ```
-8. *Push fleet state to running agents*:
-    ```bash
-    fleetmind push fleet --restart    # syncs workspace + skills to each agent and restarts
-    ```
-    This pushes each agent's rendered workspace (including `openclaw.json` and skills) plus a copy of `fleet.yaml` so the bots can run `fleetmind` CLI commands themselves (e.g. `fleetmind status`, `fleetmind task`). The `--restart` flag triggers the first start of the OpenClaw gateway service on each instance.
+**What it does:**
 
-    Note: `bot_user_id` was already populated in step 3 via `--interactive`. If you skipped that or need to re-discover (e.g. after rotating a bot token), run:
+| Step | What happens |
+|------|--------------|
+| 1 | Validates `fleet.yaml` |
+| 2 | Generates Slack app manifests (`fleetmind slack manifests`) |
+| 3 | Prompts for Slack credentials per agent (bot token, signing secret, app token, channel IDs) |
+| 4 | Discovers `bot_user_id`s via Slack `auth.test` |
+| 5 | Prompts for GitHub App credentials per agent (app_id, installation_id, .pem path) |
+| 6 | Checks/sets the shared GitHub Packages PAT in SSM |
+| 7 | Runs `fleetmind render` |
+| 8 | Prints the exact `terraform init` + `apply` commands and waits for you to run them |
+| 9 | Populates Secrets Manager (Slack + Anthropic keys) |
+| 10 | Stores GitHub App credentials in SSM |
+| 11 | Runs `fleetmind push fleet --restart --upgrade-cli` |
+| 12 | Prints `terraform output ssm_connect` for verification |
+
+Re-running `fleetmind onboard` is safe — completed steps are detected and skipped automatically.
+
+---
+
+## Manual onboarding
+
+If you prefer to run each step yourself, or need to troubleshoot a specific step:
+
+### 1. Edit fleet.yaml and tfvars
+
+- Set `fleet.name`, declare your agents in `fleet.yaml`
+- Set region, EC2 sizing, etc. in `workspaces/default.tfvars`
+
+### 2. Create Slack apps
+
+```bash
+fleetmind slack manifests --out docs/slack-manifests
+```
+
+For each generated manifest:
+1. Go to <https://api.slack.com/apps?new_app=1> → *Create New App* → *From a manifest* → paste the YAML.
+2. Install into your workspace. Capture: *Bot User OAuth Token* (`xoxb-...`), *Signing Secret*, *App-Level Token* (`xapp-...`).
+3. Create channels, invite each bot, copy channel IDs into `fleet.yaml`'s `slack.channels`.
+4. Populate `bot_user_id` in `fleet.yaml`:
     ```bash
-    fleetmind slack discover    # reads from Secrets Manager (after step 7a)
+    fleetmind slack discover --interactive
     ```
-9. *Verify*:
-    ```bash
-    terraform output ssm_connect    # SSM Session Manager commands per agent
-    ```
-    Use one of those to shell in, then `journalctl -u openclaw-<agent>` to confirm the agent service is healthy.
+
+### 3. Create GitHub Apps
+
+One per agent. For each:
+1. Register at `https://github.com/organizations/YOUR-ORG/settings/apps/new`
+2. Generate and download a private key (`.pem`)
+3. Install on the target org/repo. Capture *App ID* + *Installation ID*
+
+### 4. Render
+
+```bash
+fleetmind render
+```
+
+### 5. Terraform
+
+```bash
+terraform init -backend-config=backend.hcl
+terraform workspace new my-fleet
+terraform apply \
+  -var-file=workspaces/default.tfvars \
+  -var-file=workspaces/my-fleet.derived.tfvars
+```
+
+### 6. Populate secrets
+
+*Slack + Anthropic (Secrets Manager):*
+```bash
+fleetmind secrets populate --interactive
+```
+
+*GitHub App credentials (SSM, per agent):*
+```bash
+fleetmind github-app store \
+  --fleet my-fleet --agent blanket \
+  --app-id 123456 --installation-id 78901234 \
+  --pem-file ./blanket-github-app.pem
+```
+
+*GitHub Packages PAT (one-time, shared):*
+```bash
+aws ssm get-parameter --name /fleetmind/shared/github-packages-token --region us-west-2 2>/dev/null \
+  || aws ssm put-parameter \
+       --name /fleetmind/shared/github-packages-token \
+       --type SecureString \
+       --value "ghp_yourPATgoeshere" \
+       --region us-west-2
+```
+
+### 7. Push fleet
+
+```bash
+fleetmind push fleet --restart
+```
+
+### 8. Verify
+
+```bash
+terraform output ssm_connect    # SSM commands per agent
+# then: journalctl -u openclaw-<agent> to check gateway health
+```
+
+---
 
 ## Upgrading the module
 
-Bump the `?ref=` in `main.tf`'s `module "fleetmind"` block:
+Bump `?ref=` in `main.tf`:
 
 ```hcl
 source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v0.2.0"
 ```
 
-Then `terraform init -upgrade` and `terraform plan` to see what changes.
+Then `terraform init -upgrade && terraform plan`.
 
 ## Multi-fleet from one repo
 
-One `fleet-<name>.yaml` per fleet + Terraform workspaces for state isolation. Each fleet.yaml sets its own `outputs.terraform_vars` path (e.g. `./workspaces/fleet-a.derived.tfvars`) and its own `fleet.name`.
+One `fleet-<name>.yaml` per fleet + Terraform workspaces for state isolation:
 
 ```bash
-# Render each fleet's vars
 fleetmind render fleet-a.yaml
-fleetmind render fleet-b.yaml
-
-# State isolation per fleet
 terraform workspace new fleet-a
 terraform apply -var-file=workspaces/fleet-a.tfvars -var-file=workspaces/fleet-a.derived.tfvars
-
-terraform workspace new fleet-b
-terraform apply -var-file=workspaces/fleet-b.tfvars -var-file=workspaces/fleet-b.derived.tfvars
 ```
 
 ## Tearing down a fleet
 
-A few gotchas the AWS-side throws at you when you `terraform destroy`:
-
-1. *DynamoDB ContextStore has `deletion_protection_enabled = true`*. Disable it first:
-    ```bash
-    aws dynamodb update-table \
-      --table-name fleetmind-my-fleet \
-      --no-deletion-protection-enabled \
-      --region us-west-2
-    ```
-2. *S3 narratives bucket has versioning + objects*. Empty it before destroy:
-    ```bash
-    aws s3 rm s3://my-fleet-ledger --recursive
-    aws s3api delete-objects --bucket my-fleet-ledger \
-      --delete "$(aws s3api list-object-versions --bucket my-fleet-ledger \
-        --query '{Objects: Versions[].{Key: Key, VersionId: VersionId}}')"
-    ```
-3. *Secrets Manager recovery window*. If `secret_recovery_window_days > 0`, the per-agent secrets sit in scheduled-deletion state and the next apply will fail trying to recreate them with the same name. For iterating, use `secret_recovery_window_days = 0` (template default).
-4. Run `terraform destroy -var-file=workspaces/default.tfvars -var-file=workspaces/default.derived.tfvars` once the above are cleared.
-5. *GitHub Apps and Slack apps are out of Terraform's scope* — delete them by hand in the GitHub + Slack admin UIs.
+1. Disable DDB deletion protection: `aws dynamodb update-table --table-name fleetmind-my-fleet --no-deletion-protection-enabled --region us-west-2`
+2. Empty the S3 ledger bucket: `aws s3 rm s3://my-fleet-ledger --recursive`
+3. Set `secret_recovery_window_days = 0` in tfvars (avoids secret name conflicts on re-create)
+4. `terraform destroy -var-file=workspaces/default.tfvars -var-file=workspaces/my-fleet.derived.tfvars`
+5. Delete GitHub Apps and Slack apps by hand in their respective UIs
 
 ## License
 

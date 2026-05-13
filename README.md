@@ -52,16 +52,16 @@ fleetmind-template/
 2. *Edit `workspaces/default.tfvars`* — region, EC2 sizing, per-agent ports, software pins, opt-ins for VPC endpoints, BYO VPC, etc.
 3. *Create Slack apps* — one per agent.
     ```bash
-    fleetmind slack manifests
+    fleetmind slack manifests --out docs/slack-manifests
     ```
-    Generates one `docs/slack-manifests/<agent>.yaml` per agent. For each manifest:
+    Generates one `docs/slack-manifests/<agent>.yaml` per agent. (Default output is `./rendered/slack-manifests/` which is gitignored; `docs/` is checked in so manifests are reviewable in PRs.) For each manifest:
     1. Go to <https://api.slack.com/apps?new_app=1> → *Create New App* → *From a manifest* → paste the YAML.
     2. Install the app into your Slack workspace and capture: *Bot User OAuth Token* (`xoxb-...`), *Signing Secret*, and an *App-Level Token* with `connections:write` scope (`xapp-...`). Hold these somewhere safe — you'll enter them in step 7a.
     3. Create the Slack channels each bot will live in, invite each bot to its channels, and copy each channel's ID into `fleet.yaml`'s `slack.channels` list. *Channels must be filled in before render* because `wake_target_session_key` is derived from the PM's first channel.
 4. *Create GitHub Apps* — one per agent. Each bot uses its own GitHub App to authenticate to GitHub (clone repos, open PRs, etc.).
     1. Go to <https://github.com/organizations/YOUR-ORG/settings/apps/new> (or your personal apps page) → register a new GitHub App per agent. Suggested settings: webhook off, permissions scoped to what the bot needs (e.g. *Repository contents: Read & write*, *Pull requests: Read & write*, *Issues: Read & write*).
     2. Generate and download a *private key* (`.pem`) for the app. Keep it offline — it goes into AWS SSM in step 7b, not into git.
-    3. *Install the app* on the org/account whose repos the bot needs access to. Capture the *Installation ID* from the URL after install (e.g. `https://github.com/organizations/YOUR-ORG/settings/installations/<INSTALLATION_ID>`) or via `gh api /app/installations`.
+    3. *Install the app* on the org/account whose repos the bot needs access to. Capture the *Installation ID* from the URL after install: `https://github.com/organizations/YOUR-ORG/settings/installations/<INSTALLATION_ID>`.
     4. From the app's settings page, also capture the *App ID* (top of the General page).
     5. Per agent, you should now have: app ID, installation ID, `.pem` file path.
 5. *Render the fleet.yaml-derived tfvars*:
@@ -126,17 +126,42 @@ Then `terraform init -upgrade` and `terraform plan` to see what changes.
 
 ## Multi-fleet from one repo
 
-Use Terraform workspaces. Each workspace gets its own `workspaces/<name>.tfvars` + `workspaces/<name>.derived.tfvars` and its own state path (`env:/<name>/`):
+One `fleet-<name>.yaml` per fleet + Terraform workspaces for state isolation. Each fleet.yaml sets its own `outputs.terraform_vars` path (e.g. `./workspaces/fleet-a.derived.tfvars`) and its own `fleet.name`.
 
 ```bash
+# Render each fleet's vars
+fleetmind render fleet-a.yaml
+fleetmind render fleet-b.yaml
+
+# State isolation per fleet
 terraform workspace new fleet-a
-fleetmind render --workspace fleet-a
 terraform apply -var-file=workspaces/fleet-a.tfvars -var-file=workspaces/fleet-a.derived.tfvars
 
 terraform workspace new fleet-b
-fleetmind render --workspace fleet-b
 terraform apply -var-file=workspaces/fleet-b.tfvars -var-file=workspaces/fleet-b.derived.tfvars
 ```
+
+## Tearing down a fleet
+
+A few gotchas the AWS-side throws at you when you `terraform destroy`:
+
+1. *DynamoDB ContextStore has `deletion_protection_enabled = true`*. Disable it first:
+    ```bash
+    aws dynamodb update-table \
+      --table-name fleetmind-my-fleet \
+      --no-deletion-protection-enabled \
+      --region us-west-2
+    ```
+2. *S3 narratives bucket has versioning + objects*. Empty it before destroy:
+    ```bash
+    aws s3 rm s3://my-fleet-ledger --recursive
+    aws s3api delete-objects --bucket my-fleet-ledger \
+      --delete "$(aws s3api list-object-versions --bucket my-fleet-ledger \
+        --query '{Objects: Versions[].{Key: Key, VersionId: VersionId}}')"
+    ```
+3. *Secrets Manager recovery window*. If `secret_recovery_window_days > 0`, the per-agent secrets sit in scheduled-deletion state and the next apply will fail trying to recreate them with the same name. For iterating, use `secret_recovery_window_days = 0` (template default).
+4. Run `terraform destroy -var-file=workspaces/default.tfvars -var-file=workspaces/default.derived.tfvars` once the above are cleared.
+5. *GitHub Apps and Slack apps are out of Terraform's scope* — delete them by hand in the GitHub + Slack admin UIs.
 
 ## License
 

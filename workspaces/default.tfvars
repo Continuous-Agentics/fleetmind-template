@@ -17,6 +17,9 @@ agent_instance_types = {
 
 # ── Per-agent gateway ports ─────────────────────────────────────────────────
 # Each agent needs a unique port. Convention: start at 18789 and increment.
+# IMPORTANT: every agent in fleet.yaml's agents.list MUST have an entry here
+# (keys must exactly match agent IDs). Terraform errors with a missing-key
+# message at plan time otherwise.
 agent_ports = {
   blanket = 18789
   charlie = 18790
@@ -38,8 +41,11 @@ delegation_enabled = true
 enable_interface_endpoints = false
 
 # ── Secrets Manager recovery ────────────────────────────────────────────────
-# 0 = delete immediately (ephemeral test fleets); 7–30 = days of recovery.
-secret_recovery_window_days = 7
+# 0 = delete immediately (no recovery delay on terraform destroy — useful while
+# iterating on a fleet). 7–30 = days of recovery for production. Default below
+# is 0 since template-derived fleets typically get destroyed several times
+# before stabilizing; bump to 7+ for production fleets.
+secret_recovery_window_days = 0
 
 # ── BYO VPC (optional) ──────────────────────────────────────────────────────
 # Leave vpc_id empty (default) to let the module create a fresh VPC.

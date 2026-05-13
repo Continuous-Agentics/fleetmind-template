@@ -8,6 +8,11 @@
 # Edit names, models, channels, and personas before your first apply.
 
 fleet:
+  # The fleet name namespaces ALL AWS resources (tables, S3 buckets, IAM roles,
+  # secrets, EC2 Name tags). S3 buckets are globally unique — either pick a
+  # fleet name that's unlikely to collide (e.g. include your account ID or org
+  # short-name) or you'll get a BucketAlreadyExists error on terraform apply.
+  # Convention: <org>-<purpose>-<account_id> works well.
   name: my-fleet
   version: "0.1.0"
   description: "Starter fleet from fleetmind-template."
@@ -18,11 +23,28 @@ skills_repo:
 secrets:
   provider: env # secrets read from environment variables at render time
 
+# Where `fleetmind render` writes its outputs. Override per fleet.yaml when
+# running multi-fleet from one repo (e.g. fleet-a.yaml writes to
+# workspaces/fleet-a.derived.tfvars).
+outputs:
+  openclaw_json: ./rendered/openclaw.json
+  terraform_vars: ./workspaces/default.derived.tfvars
+
+# ContextStore — shared cross-agent KV state. Must match the table the
+# terraform-aws-fleetmind module provisions (default name: "fleetmind-<fleet>").
+context:
+  provider: dynamodb
+  region: us-west-2
+  # table: fleetmind-my-fleet   # defaults to fleetmind-<fleet.name>; usually no need to override
+
 delegation:
   enabled: true
   aws_region: us-west-2
-  # table_name + s3_bucket are derived from fleet.name; set explicitly only if
-  # you need to override (e.g. for cross-account scenarios).
+  # table_name + s3_bucket must match what Terraform creates. The module's
+  # default naming is "<fleet>-tasks" and "<fleet>-ledger" — update both lines
+  # below when you change fleet.name above.
+  table_name: my-fleet-tasks
+  s3_bucket: my-fleet-ledger
 
 agents:
   defaults:

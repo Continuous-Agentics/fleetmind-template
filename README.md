@@ -99,13 +99,15 @@ fleetmind-template/
     ```
     Repeat per agent. Writes `app-id`, `installation-id`, and `pem` under `/fleetmind/my-fleet/agents/<agent>/github-app/`.
 
-    *7c. GitHub Packages PAT* (one-time, fleet-wide) — bots install the `fleetmind` CLI from GitHub Packages, which needs a PAT with `read:packages` scope:
+    *7c. GitHub Packages PAT* (one-time, shared across all fleets in the account) — the bots need a PAT with `read:packages` scope stored in SSM to install the `fleetmind` CLI during bootstrap. This is created once per AWS account and persists across fleet deployments:
     ```bash
-    aws ssm put-parameter \
-      --name /fleetmind/shared/github-packages-token \
-      --type SecureString \
-      --value "ghp_yourPATgoeshere" \
-      --region us-west-2
+    # Only needed if not already present in the account
+    aws ssm get-parameter --name /fleetmind/shared/github-packages-token --region us-west-2 2>/dev/null \
+      || aws ssm put-parameter \
+           --name /fleetmind/shared/github-packages-token \
+           --type SecureString \
+           --value "ghp_yourPATgoeshere" \
+           --region us-west-2
     ```
 8. *Push updated fleet state to running agents*:
     ```bash

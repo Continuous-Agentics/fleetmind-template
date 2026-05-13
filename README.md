@@ -57,8 +57,11 @@ fleetmind-template/
     Generates one `docs/slack-manifests/<agent>.yaml` per agent. (Default output is `./rendered/slack-manifests/` which is gitignored; `docs/` is checked in so manifests are reviewable in PRs.) For each manifest:
     1. Go to <https://api.slack.com/apps?new_app=1> → *Create New App* → *From a manifest* → paste the YAML.
     2. Install the app into your Slack workspace and capture: *Bot User OAuth Token* (`xoxb-...`), *Signing Secret*, and an *App-Level Token* with `connections:write` scope (`xapp-...`). Hold these somewhere safe — you'll enter them in step 7a.
-    3. From the app's *App Credentials* page, copy the **Bot User ID** (format: `U...`) and fill it into `fleet.yaml`'s `slack.bot_user_id` for that agent. (Alternatively, run `fleetmind slack discover` after step 7a once tokens are in Secrets Manager — it writes `bot_user_id` back automatically.)
-    4. Create the Slack channels each bot will live in, invite each bot to its channels, and copy each channel's ID into `fleet.yaml`'s `slack.channels` list. *Channels must be filled in before render* because `wake_target_session_key` is derived from the PM's first channel.
+    3. Create the Slack channels each bot will live in, invite each bot to its channels, and copy each channel's ID into `fleet.yaml`'s `slack.channels` list. *Channels must be filled in before render* because `wake_target_session_key` is derived from the PM's first channel.
+    4. Run `fleetmind slack discover --interactive` to populate `bot_user_id` in `fleet.yaml` right now (prompts for each agent's bot token with hidden input — no AWS needed):
+        ```bash
+        fleetmind slack discover --interactive
+        ```
 4. *Create GitHub Apps* — one per agent. Each bot uses its own GitHub App to authenticate to GitHub (clone repos, open PRs, etc.).
     1. Go to <https://github.com/organizations/YOUR-ORG/settings/apps/new> (or your personal apps page) → register a new GitHub App per agent. Suggested settings: webhook off, permissions scoped to what the bot needs (e.g. *Repository contents: Read & write*, *Pull requests: Read & write*, *Issues: Read & write*).
     2. Generate and download a *private key* (`.pem`) for the app. Keep it offline — it goes into AWS SSM in step 7b, not into git.
@@ -104,10 +107,13 @@ fleetmind-template/
       --value "ghp_yourPATgoeshere" \
       --region us-west-2
     ```
-8. *Discover `bot_user_id`s and push to running agents*:
+8. *Push updated fleet state to running agents*:
     ```bash
-    fleetmind slack discover    # reads bot tokens from SM, calls auth.test, writes bot_user_id back to fleet.yaml
-    fleetmind push-fleet        # syncs the updated fleet.yaml + skills to each running agent
+    fleetmind push-fleet    # syncs fleet.yaml + skills to each running agent
+    ```
+    Note: `bot_user_id` was already populated in step 3 via `--interactive`. If you skipped that or need to re-discover (e.g. after rotating a bot token), run:
+    ```bash
+    fleetmind slack discover    # reads from Secrets Manager (after step 7a)
     ```
 9. *Verify*:
     ```bash

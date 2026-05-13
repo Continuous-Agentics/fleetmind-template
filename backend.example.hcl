@@ -12,9 +12,11 @@
 #     --billing-mode PAY_PER_REQUEST \
 #     --region us-west-2
 #
-# Per-fleet state isolation is via Terraform workspaces (env:/<workspace>/),
-# not the `key` argument. Run `terraform workspace new <fleet>` per fleet.
+# Terraform workspaces prefix this key automatically: env:/<workspace>/terraform.tfstate
+# so per-fleet state isolation is handled by workspaces, not a unique key per fleet.
+# Run `terraform workspace new <fleet>` per fleet.
 
 bucket         = "my-fleet-tfstate"
 region         = "us-west-2"
+key            = "terraform.tfstate"
 dynamodb_table = "my-fleet-tfstate-lock"

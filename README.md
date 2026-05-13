@@ -111,7 +111,7 @@ fleetmind-template/
     ```
 8. *Push updated fleet state to running agents*:
     ```bash
-    fleetmind push-fleet    # syncs fleet.yaml + skills to each running agent
+    fleetmind push fleet    # syncs fleet.yaml + skills to each running agent
     ```
     Note: `bot_user_id` was already populated in step 3 via `--interactive`. If you skipped that or need to re-discover (e.g. after rotating a bot token), run:
     ```bash

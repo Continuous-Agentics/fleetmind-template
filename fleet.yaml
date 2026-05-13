@@ -1,0 +1,89 @@
+# fleet.yaml — operator-edited declaration of the bots in this fleet.
+#
+# Used by `fleetmind render` to produce workspaces/<workspace>.derived.tfvars
+# (fleet_name, agent_names, agent_orchestrators, wake_target_session_key).
+# Workspace = Terraform workspace name (`terraform workspace new <name>`).
+#
+# Below is a minimal 2-bot example: one PM (Blanket) and one worker (Charlie).
+# Edit names, models, channels, and personas before your first apply.
+
+fleet:
+  name: my-fleet
+  version: "0.1.0"
+  description: "Starter fleet from fleetmind-template."
+
+skills_repo:
+  local: ./openclaw # use bundled role templates + skills
+
+secrets:
+  provider: env # secrets read from environment variables at render time
+
+delegation:
+  enabled: true
+  aws_region: us-west-2
+  # table_name + s3_bucket are derived from fleet.name; set explicitly only if
+  # you need to override (e.g. for cross-account scenarios).
+
+agents:
+  defaults:
+    model: anthropic/claude-haiku-4-5
+    workspace_base: /opt/openclaw/workspace
+    plugins:
+      - anthropic
+
+  list:
+    # ── PM bot ───────────────────────────────────────────────────────────────
+    - id: blanket
+      name: Blanket
+      emoji: 🛏️
+      role: pm
+      orchestrator: true
+      model: anthropic/claude-sonnet-4-6 # PMs get a bit more horsepower
+      description: "PM bot for my-fleet."
+      persona:
+        soul: |
+          You are Blanket, the project-manager bot for my-fleet. You
+          delegate tasks to worker bots via the bot-delegation skill and
+          close the loop on every assignment.
+      slack:
+        account_id: blanket
+        bot_user_id: "U_REPLACE_ME" # captured via auth.test after Slack app creation
+        channels: ["C_REPLACE_ME"] # PM's home + delegation channel
+        bot_token: "${BLANKET_BOT_TOKEN}"
+        app_token: "${BLANKET_APP_TOKEN}"
+        background_color: "#2C3E50"
+        long_description: >
+          Blanket is the project-manager bot for my-fleet. Delegates tasks
+          to worker bots and tracks them in the fleet's task ledger.
+      skills:
+        - name: bot-delegation
+          source: fleetmind
+      agent_to_agent:
+        can_send_to: [charlie]
+      delegation:
+        worker_bots: [charlie]
+
+    # ── Worker bot ───────────────────────────────────────────────────────────
+    - id: charlie
+      name: Charlie
+      emoji: 🔧
+      role: worker
+      orchestrator: false
+      description: "Worker bot for my-fleet (generic)."
+      persona:
+        soul: |
+          You are Charlie, a worker bot in my-fleet. You pick up tasks from
+          Blanket via the bot-reception skill, do them, and report back.
+      slack:
+        account_id: charlie
+        bot_user_id: "U_REPLACE_ME"
+        channels: ["C_REPLACE_ME"]
+        bot_token: "${CHARLIE_BOT_TOKEN}"
+        app_token: "${CHARLIE_APP_TOKEN}"
+        background_color: "#1ABC9C"
+        long_description: >
+          Charlie is a worker bot in my-fleet. Receives tasks from the PM
+          and ships them back through the ledger.
+      skills:
+        - name: bot-reception
+          source: fleetmind

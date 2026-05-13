@@ -1,0 +1,22 @@
+# Terraform state and lock files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Operator-local backend config
+backend.hcl
+
+# Renderer output (CLI-generated from fleet.yaml; regenerated on every render)
+rendered/
+
+# Derived tfvars (renderer output) — also live under workspaces/ in some flows
+workspaces/*.derived.tfvars
+
+# Editor / OS noise
+.DS_Store
+.vscode/
+.idea/
+
+# Fleetmind CLI scratch
+.fleetmind/

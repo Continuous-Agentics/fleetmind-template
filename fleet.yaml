@@ -13,7 +13,7 @@ fleet:
   description: "Starter fleet from fleetmind-template."
 
 skills_repo:
-  local: ./openclaw # use bundled role templates + skills
+  local: ./skills # fleet-local skills directory (see skills/README.md)
 
 secrets:
   provider: env # secrets read from environment variables at render time
@@ -47,8 +47,11 @@ agents:
           close the loop on every assignment.
       slack:
         account_id: blanket
-        bot_user_id: "U_REPLACE_ME" # captured via auth.test after Slack app creation
-        channels: ["C_REPLACE_ME"] # PM's home + delegation channel
+        # bot_user_id is auto-populated by `fleetmind slack discover` once the
+        # bot tokens are in Secrets Manager (or env). Leave as REPLACE_ME until
+        # then.
+        bot_user_id: "U_REPLACE_ME"
+        channels: ["C_REPLACE_ME"] # PM's home + delegation channel IDs
         bot_token: "${BLANKET_BOT_TOKEN}"
         app_token: "${BLANKET_APP_TOKEN}"
         background_color: "#2C3E50"
@@ -76,6 +79,7 @@ agents:
           Blanket via the bot-reception skill, do them, and report back.
       slack:
         account_id: charlie
+        # bot_user_id is auto-populated by `fleetmind slack discover` (see PM bot above).
         bot_user_id: "U_REPLACE_ME"
         channels: ["C_REPLACE_ME"]
         bot_token: "${CHARLIE_BOT_TOKEN}"

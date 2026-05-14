@@ -186,7 +186,10 @@ Writes `./rendered/openclaw-acme.json` and `./workspaces/acme.derived.tfvars` (b
 
 ## 5. Edit the infra-only tfvars (~30s)
 
-The template ships `workspaces/default.tfvars` as a starting point. Copy it and edit:
+The template ships `workspaces/default.tfvars` as a starting point. Two options:
+
+- *Single-fleet repo* (most operators): edit `workspaces/default.tfvars` directly. Use "default" as the Terraform workspace name in step 6.
+- *Multi-fleet repo* (one repo, several fleets): copy `default.tfvars` to a per-fleet file. Below shows the multi-fleet pattern using `acme` as the fleet name:
 
 ```bash
 cp workspaces/default.tfvars workspaces/acme.tfvars

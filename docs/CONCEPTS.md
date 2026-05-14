@@ -77,7 +77,7 @@ A versioned capability that gives an agent a specific competence (e.g. `coding`,
 Skills have a **source**:
 
 - `fleetmind` — ships bundled in the fleetmind package under `openclaw/skills/`
-- `client` — pulled from the operator's external skills repo (see "Skills Repo" in [README.md](../README.md))
+- `client` — fleet-local skills under [`skills/`](../skills/README.md) in this repo, plus any external versioned skills repo configured via `skills_repo` in `fleet.yaml`
 
 Skills can be **pinned** (`version: "2.1.0"`) or unpinned. Unpinned skills auto-update when `fleetmind watch` runs.
 

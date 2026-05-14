@@ -59,9 +59,14 @@ All commands in the rest of this guide run from the root of that repo.
 
 ---
 
-## 2. Define Your Fleet (`fleet-<name>.yaml`)
+## 2. Define Your Fleet (`fleet-<name>.yaml` + `COMPANY.md`)
 
-The fleet YAML is the single source of truth. Everything — Terraform variables, per-agent `openclaw.json`, workspace files — is derived from it by `fleetmind render`.
+Two files at the repo root drive everything downstream:
+
+- **`fleet.yaml`** — single source of truth for agents (PM bot, workers, their personas, models, Slack/GitHub identities). Terraform variables, per-agent `openclaw.json`, and workspace files are all derived from it by `fleetmind render`.
+- **`COMPANY.md`** — fleet-wide org context. The template ships a starter with placeholder sections (mission, products, terminology, how-we-work, out-of-scope). At render time, `fleetmind render` copies `COMPANY.md` into every per-agent workspace so each bot reads it during session boot (after `SOUL.md` + `TOOLS.md`, before `memory/...`).
+
+Both files are operator-edited before the first deploy. `COMPANY.md` is optional in the sense that `render` doesn't fail without it — but bots running without org context end up re-asking basic 'what does this acronym mean?' questions in every conversation. Strongly recommend filling in at least the mission + terminology sections.
 
 ### Naming conventions
 

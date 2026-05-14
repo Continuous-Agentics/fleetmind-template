@@ -10,7 +10,7 @@ Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/f
 > 1. *`fleet.yaml`* — declare your agents (PM bot, workers, their personas, models, Slack/GitHub identities)
 > 2. *`COMPANY.md`* — fleet-wide org context that every bot reads on startup (mission, products, terminology, norms, out-of-scope boundaries). The template ships a starter with placeholder sections. Skip-or-omit is allowed but strongly discouraged: bots without COMPANY.md ask basic company questions in every conversation.
 
-This repo *consumes* [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) as a module (currently pinned to `v0.1.3`). Bump `?ref=` in `main.tf` to upgrade.
+This repo *consumes* [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) as a module. The current pin lives in [`main.tf`](main.tf) (search for `?ref=v`). Bump it there to upgrade.
 
 ## Layout
 

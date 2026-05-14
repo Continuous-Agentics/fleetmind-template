@@ -44,7 +44,7 @@ provider "aws" {
 }
 
 module "fleetmind" {
-  source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v0.1.4"
+  source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v0.1.6"
 
   # ── Derived from fleet.yaml via `fleetmind render` ──────────────────────────
   fleet_name              = var.fleet_name

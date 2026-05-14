@@ -37,12 +37,28 @@ fleetmind-template/
 
 ## One-time setup per operator
 
-1. *Fork or clone this repo* into your own org. Rename if you want.
-2. *Create a Terraform state backend* (one-time per operator account):
+1. *Make sure you're in your fleet repo.* If this repo was created for you, it's already in your org. If you're starting from the `fleetmind-template` source repo, use `gh repo create --template Continuous-Agentics/fleetmind-template <your-org>/<your-fleet>` to spin up a fresh repo first.
+2. *Create a Terraform state backend* (one-time per AWS account). The bucket holds credential-equivalent state, so create it locked-down:
     ```bash
-    aws s3 mb s3://my-fleet-tfstate --region us-west-2
+    aws s3api create-bucket \
+      --bucket <YOUR-TFSTATE-BUCKET> \
+      --region us-west-2 \
+      --create-bucket-configuration LocationConstraint=us-west-2
+
+    aws s3api put-bucket-versioning \
+      --bucket <YOUR-TFSTATE-BUCKET> \
+      --versioning-configuration Status=Enabled
+
+    aws s3api put-public-access-block \
+      --bucket <YOUR-TFSTATE-BUCKET> \
+      --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+    aws s3api put-bucket-encryption \
+      --bucket <YOUR-TFSTATE-BUCKET> \
+      --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+
     aws dynamodb create-table \
-      --table-name my-fleet-tfstate-lock \
+      --table-name <YOUR-TFSTATE-BUCKET>-lock \
       --attribute-definitions AttributeName=LockID,AttributeType=S \
       --key-schema AttributeName=LockID,KeyType=HASH \
       --billing-mode PAY_PER_REQUEST \
@@ -84,88 +100,15 @@ Re-running `fleetmind onboard` is safe — completed steps are detected and skip
 
 ## Manual onboarding
 
-If you prefer to run each step yourself, or need to troubleshoot a specific step:
+If you prefer to run each step yourself, or need to troubleshoot a specific step, see [`docs/QUICKSTART.md`](docs/QUICKSTART.md) for the 30-minute happy path and [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) for the comprehensive every-option reference. Per-topic guides:
 
-### 1. Edit fleet.yaml and tfvars
-
-- Set `fleet.name`, declare your agents in `fleet.yaml`
-- Set region, EC2 sizing, etc. in `workspaces/default.tfvars`
-
-### 2. Create Slack apps
-
-```bash
-fleetmind slack manifests --out docs/slack-manifests
-```
-
-For each generated manifest:
-1. Go to <https://api.slack.com/apps?new_app=1> → *Create New App* → *From a manifest* → paste the YAML.
-2. Install into your workspace. Capture: *Bot User OAuth Token* (`xoxb-...`), *Signing Secret*, *App-Level Token* (`xapp-...`).
-3. Create channels, invite each bot, copy channel IDs into `fleet.yaml`'s `slack.channels`.
-4. Populate `bot_user_id` in `fleet.yaml`:
-    ```bash
-    fleetmind slack discover --interactive
-    ```
-
-### 3. Create GitHub Apps
-
-One per agent. For each:
-1. Register at `https://github.com/organizations/YOUR-ORG/settings/apps/new`
-2. Generate and download a private key (`.pem`)
-3. Install on the target org/repo. Capture *App ID* + *Installation ID*
-
-### 4. Render
-
-```bash
-fleetmind render
-```
-
-### 5. Terraform
-
-```bash
-terraform init -backend-config=backend.hcl
-terraform workspace new my-fleet
-terraform apply \
-  -var-file=workspaces/default.tfvars \
-  -var-file=workspaces/my-fleet.derived.tfvars
-```
-
-### 6. Populate secrets
-
-*Slack + Anthropic (Secrets Manager):*
-```bash
-fleetmind secrets populate --interactive
-```
-
-*GitHub App credentials (SSM, per agent):*
-```bash
-fleetmind github-app store \
-  --fleet my-fleet --agent blanket \
-  --app-id 123456 --installation-id 78901234 \
-  --pem-file ./blanket-github-app.pem
-```
-
-*GitHub Packages PAT (one-time, shared):*
-```bash
-aws ssm get-parameter --name /fleetmind/shared/github-packages-token --region us-west-2 2>/dev/null \
-  || aws ssm put-parameter \
-       --name /fleetmind/shared/github-packages-token \
-       --type SecureString \
-       --value "ghp_yourPATgoeshere" \
-       --region us-west-2
-```
-
-### 7. Push fleet
-
-```bash
-fleetmind push fleet --restart
-```
-
-### 8. Verify
-
-```bash
-terraform output ssm_connect    # SSM commands per agent
-# then: journalctl -u openclaw-<agent> to check gateway health
-```
+- [`docs/CONCEPTS.md`](docs/CONCEPTS.md) — vocabulary (fleet, agent, workspace, persona, skill, plugin, ContextStore, task ledger, delegation, wake pipeline, sweep, lifecycle, render/push/pull-self)
+- [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — narrative happy path, 30-min bring-up
+- [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) — comprehensive bring-up reference
+- [`docs/MULTI-FLEET.md`](docs/MULTI-FLEET.md) — running multiple fleets in one AWS account
+- [`docs/GITHUB-APPS.md`](docs/GITHUB-APPS.md) — per-agent GitHub App credential flow
+- [`docs/OPERATING.md`](docs/OPERATING.md) — day-to-day ops: push, pull-self, single-agent deploys, restart semantics, SSM-into-bot, log inspection
+- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — symptom → cause → fix for install, Slack, Terraform, deploy, delegation, runtime failures
 
 ---
 
@@ -181,13 +124,7 @@ Then `terraform init -upgrade && terraform plan`.
 
 ## Multi-fleet from one repo
 
-One `fleet-<name>.yaml` per fleet + Terraform workspaces for state isolation:
-
-```bash
-fleetmind render fleet-a.yaml
-terraform workspace new fleet-a
-terraform apply -var-file=workspaces/fleet-a.tfvars -var-file=workspaces/fleet-a.derived.tfvars
-```
+One `fleet-<name>.yaml` per fleet + Terraform workspaces for state isolation. Full walkthrough in [`docs/MULTI-FLEET.md`](docs/MULTI-FLEET.md).
 
 ## Tearing down a fleet
 

@@ -4,7 +4,11 @@
 > Click [**Use this template**](../../generate) to create your own fleet repo, then clone that.
 > Forking gives you the wrong git history and no clean way to stay current.
 
-Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Create a repo from this template, edit `fleet.yaml`, and either run the guided wizard or follow the manual steps below.
+Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Create a repo from this template, edit `fleet.yaml` and `COMPANY.md`, and either run the guided wizard or follow the manual steps below.
+
+> **Before onboarding, fill out two files:**
+> 1. *`fleet.yaml`* — declare your agents (PM bot, workers, their personas, models, Slack/GitHub identities)
+> 2. *`COMPANY.md`* — fleet-wide org context that every bot reads on startup (mission, products, terminology, norms, out-of-scope boundaries). The template ships a starter with placeholder sections. Skip-or-omit is allowed but strongly discouraged: bots without COMPANY.md ask basic company questions in every conversation.
 
 This repo *consumes* [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) as a module (currently pinned to `v0.1.3`). Bump `?ref=` in `main.tf` to upgrade.
 
@@ -14,6 +18,7 @@ This repo *consumes* [`terraform-aws-fleetmind`](https://github.com/Continuous-A
 fleetmind-template/
 ├── README.md                         # this file
 ├── fleet.yaml                        # bot declarations (edit this)
+├── COMPANY.md                        # fleet-wide org context (edit this)
 ├── main.tf                           # module call (rarely edited)
 ├── variables.tf                      # input surface (rarely edited)
 ├── outputs.tf                        # re-exported outputs
@@ -73,7 +78,7 @@ fleetmind-template/
 `fleetmind onboard` is an interactive wizard that walks through every step, collects credentials inline, and drives all the fleetmind commands automatically.
 
 ```bash
-# Edit fleet.yaml and workspaces/default.tfvars first, then:
+# Edit fleet.yaml, COMPANY.md, and workspaces/default.tfvars first, then:
 fleetmind onboard
 ```
 

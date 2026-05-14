@@ -107,6 +107,8 @@ If you prefer to run each step yourself, or need to troubleshoot a specific step
 - [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) — comprehensive bring-up reference
 - [`docs/MULTI-FLEET.md`](docs/MULTI-FLEET.md) — running multiple fleets in one AWS account
 - [`docs/GITHUB-APPS.md`](docs/GITHUB-APPS.md) — per-agent GitHub App credential flow
+- [`docs/OPERATING.md`](docs/OPERATING.md) — day-to-day ops: push, pull-self, single-agent deploys, restart semantics, SSM-into-bot, log inspection
+- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — symptom → cause → fix for install, Slack, Terraform, deploy, delegation, runtime failures
 
 ---
 

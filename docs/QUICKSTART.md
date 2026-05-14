@@ -30,9 +30,13 @@ Target region for this walkthrough: `us-west-2`.
 
 ---
 
-## 1. Edit fleet.yaml (~2 min)
+## 1. Edit fleet.yaml + COMPANY.md (~5 min)
 
-The template already ships a starter `fleet.yaml`. Replace its `agents.list[]` (and the `fleet` block at the top) with this minimal 2-bot definition:
+The template ships starter versions of both files at the repo root. Edit both before continuing.
+
+### 1a. `fleet.yaml`
+
+Replace its `agents.list[]` (and the `fleet` block at the top) with this minimal 2-bot definition:
 
 > **Starting outside the template?** `fleetmind init --name acme --client "Acme Corp" --output fleet-acme.yaml` scaffolds a standalone `fleet.yaml` you can drop into any repo — but the canonical path is to edit the template's existing `fleet.yaml` directly.
 
@@ -133,6 +137,12 @@ openclaw:
 ```
 
 Don't fill in `C_…_CHANNEL_ID` placeholders yet — you'll get them in §3.
+
+### 1b. `COMPANY.md`
+
+Open `COMPANY.md` at the repo root. Fill in the placeholder sections — mission, products, terminology, how you work, out-of-scope boundaries. *Every bot in the fleet reads this on session boot*, so the time you spend here saves the team from re-explaining basics in every conversation.
+
+If you skip this step, bots run without org context. They'll ask basic questions ('what does this acronym mean?', 'who owns this repo?') in every session. Strongly recommend filling it in even minimally before first deploy.
 
 ## 2. Generate Slack app manifests (~10s)
 

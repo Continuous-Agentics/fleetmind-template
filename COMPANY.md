@@ -11,10 +11,12 @@
 
 ---
 
+<!-- AUTO SECTION -->
 ## Mission
 
 <One paragraph: what your company does, who it serves, what success looks like.>
 
+<!-- AUTO SECTION -->
 ## Products / Services
 
 <One line per product or service. Include internal codenames operators or external names customers know.>
@@ -22,6 +24,7 @@
 - `<Product 1>` — <one-line description>
 - `<Product 2>` — <one-line description>
 
+<!-- AUTO SECTION -->
 ## Team & Structure
 
 <How teams are organized. Not a directory — high-level roles and how work flows.>
@@ -30,6 +33,7 @@
 - *Product*: <team names + what they own>
 - *<Other functions as relevant>*: <...>
 
+<!-- AUTO SECTION -->
 ## Terminology / Jargon
 
 <Acronyms, internal codenames, things only insiders would know. Save bots from asking 'what does X mean?' in every conversation.>
@@ -39,6 +43,7 @@
 | `ACME` | <expansion> |
 | `<jargon>` | <expansion> |
 
+<!-- AUTO SECTION -->
 ## How We Work
 
 <Engineering norms bots should follow when contributing.>
@@ -50,6 +55,7 @@
 - *Testing*: <expectations for new code>
 - *On-call / incident response*: <who responds, escalation path>
 
+<!-- AUTO SECTION -->
 ## Out of Scope
 
 <What bots should NOT do or speak to. Hard boundaries.>
@@ -59,6 +65,7 @@
 - *Legal review* — bots don't make legal interpretations or approve language requiring counsel
 - *<Add your own>*: <...>
 
+<!-- AUTO SECTION -->
 ## Contact
 
 - *On-call*: <Slack channel, PagerDuty, etc.>

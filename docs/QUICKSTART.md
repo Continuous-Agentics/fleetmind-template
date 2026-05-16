@@ -150,7 +150,7 @@ If you skip this step, bots run without org context. They'll ask basic questions
 fleetmind slack manifests --fleet fleet-acme.yaml --out ./rendered/slack-manifests/
 ```
 
-Two files appear: `pm.yaml` and `worker.yaml`.
+One file appears per agent, named after that agent's `id` in `fleet.yaml`. With the example above you get `pm.yaml` and `worker.yaml`; with different agent IDs you get different filenames.
 
 ## 3. Create the Slack apps and channels (~5 min, manual UI)
 
@@ -311,9 +311,19 @@ See [OPERATING.md](./OPERATING.md) for the full operations reference (dry-run, s
 
 If `npm install -g @continuous-agentics/fleetmind` failed with 404, or you have no Terraform state bucket, or you've never used fleetmind in this AWS account, do these one-time steps first. They only need to happen once per account/operator.
 
-> **Before §d:** create your fleet repo from [`fleetmind-template`](https://github.com/Continuous-Agentics/fleetmind-template) (click **Use this template**, then `git clone` and `cd` into it). §a–§c don't need the repo; §d does.
+### a. Terraform backend config (per operator clone of fleetmind-template)
 
-### a. GitHub Packages PAT (per operator)
+Create your fleet repo from [`fleetmind-template`](https://github.com/Continuous-Agentics/fleetmind-template) (click **Use this template**, then `git clone` and `cd` into it), then from the root of that repo:
+
+```bash
+cp backend.example.hcl backend.hcl
+$EDITOR backend.hcl   # fill in: bucket, region, dynamodb_table
+terraform init -backend-config=backend.hcl
+```
+
+`backend.hcl` is gitignored. The bucket and lock table referenced here are created in §d below; if they don't exist yet, do §d first then come back and run `terraform init`.
+
+### b. GitHub Packages PAT (per operator)
 
 fleetmind is published to GitHub Packages as a private scoped package. Generate a classic PAT at [github.com/settings/tokens](https://github.com/settings/tokens) with `read:packages` scope, then:
 
@@ -323,7 +333,7 @@ echo "//npm.pkg.github.com/:_authToken=<YOUR_PAT>" >> ~/.npmrc
 npm install -g @continuous-agentics/fleetmind
 ```
 
-### b. Store the PAT in SSM (one-time per AWS account)
+### c. Store the PAT in SSM (one-time per AWS account)
 
 EC2 instances also need a PAT during bootstrap to install fleetmind:
 
@@ -335,7 +345,7 @@ aws ssm put-parameter \
   --region us-west-2
 ```
 
-### c. Terraform state bucket + lock table (one-time per AWS account)
+### d. Terraform state bucket + lock table (one-time per AWS account)
 
 ```bash
 aws s3api create-bucket \
@@ -363,18 +373,6 @@ aws dynamodb create-table \
   --region us-west-2
 ```
 
-### d. Terraform backend config (per operator clone of fleetmind-template)
-
-From the root of this repo (created from `fleetmind-template`):
-
-```bash
-cp backend.example.hcl backend.hcl
-$EDITOR backend.hcl   # fill in: bucket, region, dynamodb_table
-terraform init -backend-config=backend.hcl
-```
-
-`backend.hcl` is gitignored.
-
-Once these are done, return to [§1](#1-edit-fleetyaml-2-min) above. Subsequent fleets in the same account reuse all of this.
+Once these are done, return to [§1](#1-edit-fleetyaml--companymd-5-min) above. Subsequent fleets in the same account reuse all of this.
 
 For the comprehensive bring-up reference (every variable, every gotcha, the full IAM model), see [SETUP-A-FLEET.md](./SETUP-A-FLEET.md).

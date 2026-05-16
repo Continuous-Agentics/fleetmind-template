@@ -49,7 +49,7 @@ agents:
     params:
       cacheRetention: "short" # Default: 5-min ephemeral cache on all agents
     models:
-      "anthropic/claude-sonnet-4-6":
+      anthropic/claude-sonnet-4-6:
         params:
           cacheRetention: "long" # 1-hour TTL for interactive Sonnet sessions
 

@@ -112,11 +112,11 @@ A JSON file produced by `push fleet` alongside each tarball:
 
 ```json
 {
-  "agent_id": "blanket",
+  "agent_id": "conductor",
   "fleet_name": "acme-bots",
   "fleetmind_version": "X.Y.Z",
   "rendered_at": "2026-05-12T21:30:00Z",
-  "tarball": { "filename": "blanket.tar.gz", "size_bytes": 92348, "sha256": "..." },
+  "tarball": { "filename": "conductor.tar.gz", "size_bytes": 92348, "sha256": "..." },
   "files": [ { "path": "AGENTS.md", "size": 4612, "sha256": "...", "mode": 644 }, ... ]
 }
 ```

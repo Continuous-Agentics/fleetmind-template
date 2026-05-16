@@ -28,7 +28,7 @@ The top-level unit. A fleet has a name (e.g. `acme-bots`), one `fleet.yaml`, one
 
 A single OpenClaw bot. Each agent has:
 
-- An **id** (lowercase, e.g. `blanket`) — appears in SSM paths, systemd unit names, workspace directories
+- An **id** (lowercase, e.g. `conductor`) — appears in SSM paths, systemd unit names, workspace directories
 - A **persona** (name, emoji, role, soul)
 - Its own **EC2 instance** (isolation > efficiency: a runaway skill on one agent can't starve another)
 - Its own OpenClaw gateway
@@ -54,7 +54,7 @@ Per-agent personality and identity, declared in `fleet.yaml`:
 ```yaml
 persona:
   soul: |
-    You are Blanket, a project-manager bot...
+    You are Conductor, a project-manager bot...
 ```
 
 Rendered into `SOUL.md` in the agent's workspace. The persona shapes how the bot writes and behaves; the [skills](#skill) it has shape what it can *do*.

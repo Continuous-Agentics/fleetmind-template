@@ -4,7 +4,7 @@
 # (fleet_name, agent_names, agent_orchestrators, wake_target_session_key).
 # Workspace = Terraform workspace name (`terraform workspace new <name>`).
 #
-# Below is a minimal 2-bot example: one PM (Blanket) and one worker (Charlie).
+# Below is a minimal 2-bot example: one PM (Conductor) and one worker (Charlie).
 # Edit names, models, channels, and personas before your first apply.
 
 fleet:
@@ -55,8 +55,8 @@ agents:
 
   list:
     # ── PM bot ───────────────────────────────────────────────────────────────
-    - id: blanket
-      name: Blanket
+    - id: conductor
+      name: Conductor
       emoji: 🛏️
       role: pm
       orchestrator: true
@@ -64,21 +64,21 @@ agents:
       description: "PM bot for my-fleet."
       persona:
         soul: |
-          You are Blanket, the project-manager bot for my-fleet. You
+          You are Conductor, the project-manager bot for my-fleet. You
           delegate tasks to worker bots via the bot-delegation skill and
           close the loop on every assignment.
       slack:
-        account_id: blanket
+        account_id: conductor
         # bot_user_id is auto-populated by `fleetmind slack discover` once the
         # bot tokens are in Secrets Manager (or env). Leave as REPLACE_ME until
         # then.
         bot_user_id: "U_REPLACE_ME"
         channels: ["C_REPLACE_ME"] # PM's home + delegation channel IDs
-        bot_token: "${BLANKET_BOT_TOKEN}"
-        app_token: "${BLANKET_APP_TOKEN}"
+        bot_token: "${CONDUCTOR_BOT_TOKEN}"
+        app_token: "${CONDUCTOR_APP_TOKEN}"
         background_color: "#2C3E50"
         long_description: >
-          Blanket is the project-manager bot for my-fleet. Delegates tasks
+          Conductor is the project-manager bot for my-fleet. Delegates tasks
           to worker bots and tracks them in the fleet's task ledger.
       skills:
         - name: bot-delegation
@@ -104,7 +104,7 @@ agents:
       persona:
         soul: |
           You are Charlie, a worker bot in my-fleet. You pick up tasks from
-          Blanket via the bot-reception skill, do them, and report back.
+          Conductor via the bot-reception skill, do them, and report back.
       slack:
         account_id: charlie
         # bot_user_id is auto-populated by `fleetmind slack discover` (see PM bot above).

@@ -71,7 +71,7 @@ Both files are operator-edited before the first deploy. `COMPANY.md` is optional
 ### Naming conventions
 
 - **`fleet.name`** becomes the prefix for all AWS resource names: VPC, EC2 instances, IAM roles, S3 bucket, DynamoDB table, Secrets Manager paths. Keep it short and lowercase (e.g., `acme-bots`).
-- **Agent `id`** values are lowercase identifiers (e.g., `conductor`, `charlie`). They appear in SSM paths, service unit names, and workspace directories.
+- **Agent `id`** values are lowercase identifiers (e.g., `conductor`, `forge`). They appear in SSM paths, service unit names, and workspace directories.
 
 ### Annotated example
 
@@ -141,26 +141,26 @@ agents:
         background_color: "#2C3E50"
         long_description: >
           Conductor is the PM bot for the acme-bots fleet. It delegates work to
-          Charlie (backend worker), tracks tasks in DynamoDB, and closes the loop.
+          Forge (backend worker), tracks tasks in DynamoDB, and closes the loop.
 
       skills:
         - name: bot-delegation      # PM skill — assigns tasks to workers
           source: fleetmind
 
       agent_to_agent:
-        can_send_to: [charlie]      # which workers this PM can delegate to
+        can_send_to: [forge]      # which workers this PM can delegate to
 
       delegation:
-        worker_bots: [charlie]
+        worker_bots: [forge]
         sweeps:
-          - name: conductor-sweep-charlie
-            worker_id: charlie
+          - name: conductor-sweep-forge
+            worker_id: forge
             every: 5m              # check for task completions every 5 minutes
             model: anthropic/claude-haiku-4-5
 
     # ── Worker bot ─────────────────────────────────────────────────────────
-    - id: charlie
-      name: Charlie
+    - id: forge
+      name: Forge
       emoji: ⚙️
       role: backend-worker
       description: "Backend specialty worker"
@@ -168,19 +168,19 @@ agents:
 
       persona:
         soul: |
-          You are Charlie, a backend worker. You accept delegated tasks from
+          You are Forge, a backend worker. You accept delegated tasks from
           Conductor, acknowledge with :eyes:, ship the work, and report back.
 
       slack:
-        account_id: charlie
+        account_id: forge
         # bot_user_id: "U…"  (filled by `fleetmind slack discover`)
         channels:
           - "C…"    # shared delegation channel (same as PM's delegation channel)
-        bot_token: "${CHARLIE_BOT_TOKEN}"
-        app_token: "${CHARLIE_APP_TOKEN}"
+        bot_token: "${FORGE_BOT_TOKEN}"
+        app_token: "${FORGE_APP_TOKEN}"
         background_color: "#8B4513"
         long_description: >
-          Charlie is the backend worker for the acme-bots fleet. Receives task
+          Forge is the backend worker for the acme-bots fleet. Receives task
           envelopes from Conductor, ships work, and posts completion summaries.
 
       skills:
@@ -330,7 +330,7 @@ instance_type = "t3.medium"    # or t4g.medium for arm64 Graviton
 # Gateway port per agent. Keys must match agent ids in fleet.yaml.
 agent_ports = {
   conductor = 18789
-  charlie = 18790
+  forge = 18790
 }
 
 # Software versions pinned to a known-good release.
@@ -410,8 +410,8 @@ The auto.tfvars looks like:
 
 ```hcl
 fleet_name             = "acme-bots"
-agent_names            = ["conductor", "charlie"]
-agent_orchestrators    = { conductor = true, charlie = false }
+agent_names            = ["conductor", "forge"]
+agent_orchestrators    = { conductor = true, forge = false }
 wake_target_session_key = "CXXXXXXXXXX"   # PM's first channel
 ```
 
@@ -549,7 +549,7 @@ Repeat for each agent.
 
 **Inter-bot delegation:** Ask the PM to delegate a simple task to the worker. Watch for the full round-trip:
 
-1. PM posts a task envelope in the delegation channel mentioning `<@charlie-user-id>`
+1. PM posts a task envelope in the delegation channel mentioning `<@forge-user-id>`
 2. Worker reacts `:eyes:` to acknowledge pickup
 3. Worker completes the task and posts a completion summary in the thread
 4. PM's sweep (every 5 minutes, or nudge it manually) detects the `shipped` state and closes the loop

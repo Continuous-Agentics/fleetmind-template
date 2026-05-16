@@ -48,11 +48,6 @@ variable "instance_type" {
   default     = "t3.medium"
 }
 
-variable "agent_ports" {
-  description = "Map of agent_id → OpenClaw gateway port. Each agent needs a unique port (the OpenClaw gateway listens on this port inside its EC2)."
-  type        = map(number)
-}
-
 variable "agent_instance_types" {
   description = "Per-agent EC2 instance type overrides. Agents not listed fall back to var.instance_type."
   type        = map(string)

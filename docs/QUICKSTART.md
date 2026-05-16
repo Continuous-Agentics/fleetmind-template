@@ -211,11 +211,6 @@ Minimum contents:
 aws_region    = "us-west-2"
 instance_type = "t3.medium"
 
-agent_ports = {
-  pm     = 18789
-  worker = 18790
-}
-
 openclaw_version  = "latest"
 node_version      = "22"
 fleetmind_version = "X.Y.Z"   # pin to current stable — `npm view @continuous-agentics/fleetmind version`

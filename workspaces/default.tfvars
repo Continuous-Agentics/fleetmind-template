@@ -15,9 +15,6 @@ agent_instance_types = {
   # conductor = "t3.large"
 }
 
-# ── Per-agent gateway ports ─────────────────────────────────────────────────
-# Each agent needs a unique port. Convention: start at 18789 and increment.
-
 # ── Software pins ───────────────────────────────────────────────────────────
 openclaw_version  = "latest"
 node_version      = "22"

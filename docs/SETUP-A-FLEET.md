@@ -327,12 +327,6 @@ Create `workspaces/acme-bots.tfvars` (in this repo (created from `fleetmind-temp
 aws_region    = "us-west-2"
 instance_type = "t3.medium"    # or t4g.medium for arm64 Graviton
 
-# Gateway port per agent. Keys must match agent ids in fleet.yaml.
-agent_ports = {
-  conductor = 18789
-  forge = 18790
-}
-
 # Software versions pinned to a known-good release.
 openclaw_version  = "latest"
 node_version      = "22"

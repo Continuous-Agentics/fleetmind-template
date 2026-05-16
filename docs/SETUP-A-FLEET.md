@@ -336,7 +336,7 @@ agent_ports = {
 # Software versions pinned to a known-good release.
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.4.3"   # pin to current stable
+fleetmind_version = "0.6.3"   # pin to current stable
 
 # Task-ledger submodule (inter-bot delegation DynamoDB + EventBridge).
 delegation_enabled = true

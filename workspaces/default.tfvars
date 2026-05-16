@@ -12,7 +12,7 @@ instance_type = "t3.medium"
 
 # Per-agent overrides (optional). Agents not listed fall back to instance_type.
 agent_instance_types = {
-  # blanket = "t3.large"
+  # conductor = "t3.large"
 }
 
 # ── Per-agent gateway ports ─────────────────────────────────────────────────
@@ -21,7 +21,7 @@ agent_instance_types = {
 # ── Software pins ───────────────────────────────────────────────────────────
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.5.2"
+fleetmind_version = "0.6.3"
 
 # ── Delegation substrate ────────────────────────────────────────────────────
 # Task-ledger DDB + S3 narratives + EventBridge Pipe. Default true.

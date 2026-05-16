@@ -90,7 +90,8 @@ agents:
         sweeps:
           - name: charlie-sweep
             worker_id: charlie
-            every: 15m
+            cron_expr: "*/15 * * * *"
+            tz: UTC
             description: "Periodic sweep to close open delegations with Charlie"
 
     # ── Worker bot ───────────────────────────────────────────────────────────

@@ -156,11 +156,11 @@ One file appears per agent, named after that agent's `id` in `fleet.yaml`. With 
 
 This step is the longest because it's clicking through the Slack UI. Do it for **each agent** (`pm`, then `worker`):
 
-1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From a manifest**
-2. Choose your workspace, paste the YAML from `./rendered/slack-manifests/<agent>.yaml`
-3. Click **Create** → **Install App** → **Allow**
-4. From **OAuth & Permissions**, copy the **Bot User OAuth Token** (`xoxb-…`)
-5. From **Basic Information → App-Level Tokens**: **Generate Token and Scopes** with scope `connections:write`; copy the **App-Level Token** (`xapp-…`)
+1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From a manifest**.
+2. Choose your workspace, paste the YAML from `./rendered/slack-manifests/<agent>.yaml`, and click **Create**. This creates the app but does *not* install it to your workspace yet — the bot token doesn't exist until install.
+3. On the app's settings page, go to **Basic Information → App-Level Tokens → Generate Token and Scopes**. Add the `connections:write` scope (required for socket mode) and click **Generate**. Copy the **App-Level Token** (`xapp-…`) — this is the only time it's shown.
+4. Go to **Install App** in the left sidebar, click **Install to Workspace**, then **Allow** on the OAuth consent page.
+5. After install, you're returned to the **Install App** page (or **OAuth & Permissions**) where the **Bot User OAuth Token** (`xoxb-…`) is now displayed. Copy it.
 
 Then in your Slack workspace:
 

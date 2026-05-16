@@ -54,6 +54,7 @@ module "fleetmind" {
 
   # ── Operator-owned infrastructure knobs ─────────────────────────────────────
   aws_region                  = var.aws_region
+  architecture                = var.architecture
   instance_type               = var.instance_type
   agent_instance_types        = var.agent_instance_types
   openclaw_version            = var.openclaw_version

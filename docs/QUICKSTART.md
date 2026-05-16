@@ -209,7 +209,8 @@ Minimum contents:
 
 ```hcl
 aws_region    = "us-west-2"
-instance_type = "t3.medium"
+architecture  = "arm64"      # or "x86_64" — must match instance_type below
+instance_type = "t4g.large"  # arm64; use a t3.*/t4.* type if architecture = "x86_64"
 
 openclaw_version  = "latest"
 node_version      = "22"

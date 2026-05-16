@@ -42,10 +42,21 @@ variable "aws_region" {
   default     = "us-west-2"
 }
 
-variable "instance_type" {
-  description = "Default EC2 instance type for agent bots."
+variable "architecture" {
+  description = "CPU architecture for both the AMI and the instance type. 'arm64' (Graviton, default) or 'x86_64' (Intel/AMD). var.instance_type and var.agent_instance_types entries must match."
   type        = string
-  default     = "t3.medium"
+  default     = "arm64"
+
+  validation {
+    condition     = contains(["arm64", "x86_64"], var.architecture)
+    error_message = "architecture must be 'arm64' or 'x86_64'."
+  }
+}
+
+variable "instance_type" {
+  description = "Default EC2 instance type for agent bots. Must match var.architecture (t4g.* for arm64, t3.*/t4.* for x86_64)."
+  type        = string
+  default     = "t4g.large"
 }
 
 variable "agent_instance_types" {

@@ -325,7 +325,8 @@ Create `workspaces/acme-bots.tfvars` (in this repo (created from `fleetmind-temp
 # workspaces/acme-bots.tfvars — infra knobs only
 
 aws_region    = "us-west-2"
-instance_type = "t3.medium"    # or t4g.medium for arm64 Graviton
+architecture  = "arm64"        # or "x86_64" — must match instance_type
+instance_type = "t4g.large"    # arm64 Graviton; pick a t3.*/t4.* if x86_64
 
 # Software versions pinned to a known-good release.
 openclaw_version  = "latest"

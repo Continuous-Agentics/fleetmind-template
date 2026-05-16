@@ -7,12 +7,18 @@
 # ── Region ──────────────────────────────────────────────────────────────────
 aws_region = "us-west-2"
 
+# ── CPU architecture ────────────────────────────────────────────────────────
+# Must be "arm64" (Graviton, default) or "x86_64". The AMI is selected to
+# match. var.instance_type and var.agent_instance_types entries must align
+# with this (t4g.* for arm64, t3.*/t4.* for x86_64).
+architecture = "arm64"
+
 # ── EC2 sizing ──────────────────────────────────────────────────────────────
-instance_type = "t3.medium"
+instance_type = "t4g.large"
 
 # Per-agent overrides (optional). Agents not listed fall back to instance_type.
 agent_instance_types = {
-  # conductor = "t3.large"
+  # conductor = "t4g.xlarge"
 }
 
 # ── Software pins ───────────────────────────────────────────────────────────

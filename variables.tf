@@ -42,15 +42,21 @@ variable "aws_region" {
   default     = "us-west-2"
 }
 
-variable "instance_type" {
-  description = "Default EC2 instance type for agent bots."
+variable "architecture" {
+  description = "CPU architecture for both the AMI and the instance type. 'arm64' (Graviton, default) or 'x86_64' (Intel/AMD). var.instance_type and var.agent_instance_types entries must match."
   type        = string
-  default     = "t3.medium"
+  default     = "arm64"
+
+  validation {
+    condition     = contains(["arm64", "x86_64"], var.architecture)
+    error_message = "architecture must be 'arm64' or 'x86_64'."
+  }
 }
 
-variable "agent_ports" {
-  description = "Map of agent_id → OpenClaw gateway port. Each agent needs a unique port (the OpenClaw gateway listens on this port inside its EC2)."
-  type        = map(number)
+variable "instance_type" {
+  description = "Default EC2 instance type for agent bots. Must match var.architecture (t4g.* for arm64, t3.*/t4.* for x86_64)."
+  type        = string
+  default     = "t4g.large"
 }
 
 variable "agent_instance_types" {
@@ -72,9 +78,9 @@ variable "node_version" {
 }
 
 variable "fleetmind_version" {
-  description = "Fleetmind CLI version pin. Must match the renderer that produced the .derived.tfvars in this checkout."
+  description = "Fleetmind CLI version pin. Must be an exact version (no 'latest') and must match the renderer that produced the .derived.tfvars in this checkout."
   type        = string
-  default     = "0.4.4"
+  default     = "0.6.3"
 }
 
 variable "delegation_enabled" {

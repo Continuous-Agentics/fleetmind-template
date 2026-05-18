@@ -2,6 +2,8 @@
 
 A glossary of the vocabulary used across this repo and its docs. Read this first if you're new to fleetmind — most other docs assume you know these terms.
 
+This file covers the *vocabulary* you need to follow the operator docs. For the implementation details behind these concepts (DynamoDB schemas, EventBridge wiring, three-way merge, etc.), see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 For a guided walkthrough, see [QUICKSTART.md](./QUICKSTART.md). For a comprehensive bring-up reference, see [SETUP-A-FLEET.md](./SETUP-A-FLEET.md).
 
 ---
@@ -26,10 +28,10 @@ The top-level unit. A fleet has a name (e.g. `acme-bots`), one `fleet.yaml`, one
 
 A single OpenClaw bot. Each agent has:
 
-- An **id** (lowercase, e.g. `blanket`) — appears in SSM paths, systemd unit names, workspace directories
+- An **id** (lowercase, e.g. `conductor`) — appears in SSM paths, systemd unit names, workspace directories
 - A **persona** (name, emoji, role, soul)
 - Its own **EC2 instance** (isolation > efficiency: a runaway skill on one agent can't starve another)
-- Its own OpenClaw **gateway** (systemd unit `openclaw-<agent_id>`)
+- Its own OpenClaw gateway
 - Its own **Slack app** (bot token, app token, channels)
 - Its own **workspace** (filesystem directory on the EC2)
 - A **skill catalog** chosen in `fleet.yaml`
@@ -45,6 +47,41 @@ Two roles, both implemented as agents:
 
 Both PM and worker still talk to humans in Slack — "orchestrator" is just a config role, not a different runtime.
 
+## Persona
+
+Per-agent personality and identity, declared in `fleet.yaml`:
+
+```yaml
+persona:
+  soul: |
+    You are Conductor, a project-manager bot...
+```
+
+Rendered into `SOUL.md` in the agent's workspace. The persona shapes how the bot writes and behaves; the [skills](#skill) it has shape what it can *do*.
+
+## Skill
+
+A versioned capability that gives an agent a specific competence (e.g. `coding`, `github`, `bot-delegation`, `bot-reception`). Each skill is a directory containing `SKILL.md` plus optional scripts/templates. Skills come from two sources: bundled with fleetmind, or fleet-local under [`skills/`](../skills/README.md) in this repo. For source/version details and pinning semantics, see [ARCHITECTURE § Skill source and versioning](./ARCHITECTURE.md#skill-source-and-versioning).
+
+## ContextStore
+
+A DynamoDB-backed shared key/value store ("hive mind") accessible to every agent in a fleet, plus any external service with IAM access. Used for fleet-wide and per-agent state that needs to survive process restart. CLI: `fleetmind context get|set|delete|list`. For the keying scheme, scopes, and IAM model, see [ARCHITECTURE § ContextStore internals](./ARCHITECTURE.md#contextstore-internals).
+
+## Task ledger
+
+A durable record of work delegated from a PM to a worker. Backed by DynamoDB (structured state) plus S3 (narrative `.md` content). Used by the [delegation](#delegation) flow to track every task from creation to completion. For the schema, status enum, and conditional-write rules, see [ARCHITECTURE § Task ledger internals](./ARCHITECTURE.md#task-ledger-internals).
+
+## Delegation
+
+The PM-bot-to-worker-bot handoff. When `delegation.enabled: true` in `fleet.yaml`, the PM:
+
+1. Creates a [task ledger](#task-ledger) entry
+2. Posts a delegation envelope in a Slack channel mentioning the worker
+3. The worker acknowledges and ships the work
+4. The PM is notified via the [wake pipeline](./ARCHITECTURE.md#wake-pipeline) and closes the loop
+
+For the lifecycle flags (`shipped-is-done` vs `requires-human-signoff`), wake pipeline wiring, and sweep resilience layer, see [ARCHITECTURE.md](./ARCHITECTURE.md). For setup: [integration/delegation.md](./integration/delegation.md).
+
 ## Workspace (disambiguation)
 
 The word "workspace" means two different things:
@@ -54,176 +91,25 @@ The word "workspace" means two different things:
 
 These are unrelated concepts that happen to share a name. When in doubt, the context makes it clear (agent workspaces hold `.md` files; Terraform workspaces hold `.tfstate`).
 
-## Gateway
-
-The OpenClaw gateway process running on each agent's EC2 host as a systemd unit (`openclaw-<agent_id>.service`). It maintains the Slack socket connection, runs the LLM loop, and exposes the agent's local port for inter-process calls. One gateway per agent — no co-tenancy.
-
-## Persona
-
-Per-agent personality and identity, declared in `fleet.yaml`:
-
-```yaml
-persona:
-  soul: |
-    You are Blanket, a project-manager bot...
-```
-
-Rendered into `SOUL.md` in the agent's workspace. The persona shapes how the bot writes and behaves; the [skills](#skill) it has shape what it can *do*.
-
-## Skill
-
-A versioned capability that gives an agent a specific competence (e.g. `coding`, `github`, `bot-delegation`, `bot-reception`). Each skill is a directory containing `SKILL.md` plus optional scripts/templates. Skills are loaded by OpenClaw at gateway startup and on-demand.
-
-Skills have a **source**:
-
-- `fleetmind` — ships bundled in the fleetmind package under `openclaw/skills/`
-- `client` — fleet-local skills under [`skills/`](../skills/README.md) in this repo, plus any external versioned skills repo configured via `skills_repo` in `fleet.yaml`
-
-Skills can be **pinned** (`version: "2.1.0"`) or unpinned. Unpinned skills auto-update when `fleetmind watch` runs.
-
-## Plugin
-
-Like a skill, but at the gateway level rather than per-task. Plugins are loaded at gateway startup and stay loaded for the life of the process. The canonical plugin is `anthropic` (the LLM provider). Configured in `agents.defaults.plugins` or per-agent.
-
-The distinction: skills are *how the agent solves a specific kind of problem*; plugins are *what the gateway can connect to at all*.
-
-## ContextStore
-
-A DynamoDB-backed shared key/value store ("hive mind") accessible to every agent in a fleet, plus any external service with IAM access. Keys are namespaced:
-
-```text
-{fleetName}/{scope}/{key}
-```
-
-Common scopes: `shared/` (fleet-wide), `<agent_id>/` (per-agent). CLI: `fleetmind context get|set|delete|list`.
-
-In dev mode (`provider: local`), the store is in-memory only — data does not survive process restart. A warning is printed so you know you're not hitting real DynamoDB.
-
-The table ARN is exported as a Terraform output (`context_store_table_arn`) so external services can be granted IAM access without hardcoding table names.
-
-## Task ledger
-
-A durable record of work delegated from a PM to a worker. Hybrid substrate:
-
-- **DynamoDB** (`{fleet_name}-tasks`) — structured state: status, timestamps, IDs, conditional writes
-- **S3** (`{fleet_name}-ledger`) — narrative `.md` content: what got done, what was learned
-
-Task IDs are 8-character lowercase hex. Status enum: `delegated → accepted → shipped → signed_off → merged`, with side transitions to `blocked` or `abandoned`.
-
-For the full schema, IAM model, and conditional-write rules, see [protocol.md](./protocol.md).
-
-## Delegation
-
-The PM-bot-to-worker-bot handoff. When `delegation.enabled: true` in `fleet.yaml`, the PM:
-
-1. Creates a [task ledger](#task-ledger) entry (`PutItem` to DDB)
-2. Posts a delegation envelope in a Slack channel mentioning the worker
-3. The worker acknowledges (`accepted` state) and ships the work (`shipped` state)
-4. The PM is notified via the [wake pipeline](#wake-pipeline) and closes the loop
-
-For setup: [integration/delegation.md](./integration/delegation.md). For protocol details: [protocol.md](./protocol.md).
-
-## Wake pipeline
-
-How a worker's terminal status transition notifies the PM bot across isolated EC2 hosts (no shared process or socket):
-
-```text
-Worker UpdateItem (shipped|blocked|abandoned|merged)
-  → DDB Stream record
-  → EventBridge Pipe (filters terminal statuses)
-  → EventBridge rule
-  → SSM Run Command on PM's EC2
-  → /opt/openclaw/ddb-wake.sh
-  → openclaw agent --message "DDB_TERMINAL_WAKE: TASK#<id>"
-```
-
-Provisioned by the [`task-ledger`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind/tree/v0.1.6/modules/task-ledger) submodule of [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind), activated automatically when `delegation_enabled = true`. The DLQ topology (`{prefix}ledger-pipe-dlq`, `{prefix}ledger-wake-dlq`) catches failures for forensics.
-
-## Sweep
-
-The resilience layer for the wake pipeline. Each PM bot runs cron jobs (seeded into OpenClaw's cron from `fleet.yaml`) that periodically poll DDB for in-flight tasks owned by each worker. If a terminal status was missed by the live wake pipeline (e.g. the PM gateway was restarting when the event fired), the next sweep catches it.
-
-Configured per-PM in `fleet.yaml` under `delegation.sweeps[]`. Typical cadence: every 5 minutes. Sweep jobs live in `~/.openclaw/cron/jobs.json` on the PM instance.
-
-## Lifecycle (`requires-human-signoff` vs. `shipped-is-done`)
-
-Each delegated task carries a lifecycle flag declared at creation:
-
-- **`shipped-is-done`** — the worker's `shipped` state is terminal. The PM closes the loop immediately on wake. Best for low-risk, self-verifiable work.
-- **`requires-human-signoff`** — `shipped` triggers a human review step (`signed_off` state) before the task is considered closed. The PM prompts a human in Slack and waits.
-
-Both lifecycles can still transition to `merged` (e.g. when an associated PR merges).
-
 ## Render
 
-`fleetmind render <fleet.yaml>` reads the fleet definition and writes:
-
-- `./rendered/openclaw-<fleet>.json` — per-agent `openclaw.json` slices
-- `workspaces/<fleet>.derived.tfvars` — derived Terraform variables (`fleet_name`, `agent_names`, `agent_orchestrators`, `wake_target_session_key`), written inside this repo (created from `fleetmind-template`) for consumption by the [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) module
-
-Nothing is pushed to EC2. Render is idempotent and safe to re-run. It's what `push fleet` does first under the hood.
-
-The `.derived.tfvars` suffix is intentional: those files are *not* auto-loaded by Terraform — they must be passed explicitly via `-var-file`. This prevents cross-workspace contamination when multiple fleets share an account.
+`fleetmind render <fleet.yaml>` reads the fleet definition and writes per-agent `openclaw.json` slices plus derived Terraform variables. Nothing is pushed to EC2. Render is idempotent and safe to re-run — it's what `push fleet` does first under the hood.
 
 ## Push
 
-`fleetmind push fleet [--restart]` is the main deploy command. It runs `render`, packages each agent's workspace into a tarball, uploads tarball + manifest to S3 (`<fleet>-ledger/deploy-staging/`), then triggers `fleetmind pull-self --apply` on each EC2 via SSM Run Command.
-
-With `--restart`, also restarts each agent's gateway after apply.
+`fleetmind push fleet [--restart]` is the main deploy command. It runs `render`, packages each agent's workspace into a tarball, uploads to S3, then triggers `fleetmind pull-self --apply` on each EC2 via SSM Run Command. With `--restart`, also restarts each agent's gateway after apply.
 
 ## Pull-self
 
-`fleetmind pull-self [--apply] [--restart]` is the *bot-side* counterpart to `push`. It runs on the agent's EC2, downloads its tarball + manifest from S3, diffs against the live workspace, and (with `--apply`) atomically applies the changes. Modified files are written to `<dest>.new` then `mv -f` to `<dest>` — POSIX-atomic.
+`fleetmind pull-self [--apply] [--restart]` is the *bot-side* counterpart to `push`. It runs on the agent's EC2, downloads its tarball from S3, diffs against the live workspace, and (with `--apply`) atomically applies the changes.
 
-You usually don't run `pull-self` directly: `push fleet` triggers it via SSM. But you can also run it manually (SSH/SSM session) when iterating on a single agent.
-
-### `openclaw.json` three-way merge
-
-One file gets special treatment: `.openclaw/openclaw.json`. Instead of an atomic overwrite, `pull-self` performs a three-way merge so that operator patches applied with `openclaw config patch` survive pushes:
-
-```
-merged = deepMerge(incoming, live − base)
-```
-
-- `incoming` — the freshly-rendered config from the new tarball
-- `live`     — the current on-disk config (may have operator patches)
-- `base`     — the previous render's config, snapshotted at `.openclaw/openclaw.base.json`
-
-Keys in `live` that differ from `base` are treated as operator patches and re-applied on top of `incoming`. When patches are preserved, `pull-self --apply` logs a dim line: `ℹ live config patches preserved`. If `base` is missing (first push, or deliberately removed), the merge short-circuits and `incoming` wins. See [TROUBLESHOOTING § openclaw.json operator-patch handling](./TROUBLESHOOTING.md#openclawjson-operator-patch-handling-and-drift) for the recovery path.
-
-## Manifest
-
-A JSON file produced by `push fleet` alongside each tarball:
-
-```json
-{
-  "agent_id": "blanket",
-  "fleet_name": "acme-bots",
-  "fleetmind_version": "X.Y.Z",
-  "rendered_at": "2026-05-12T21:30:00Z",
-  "tarball": { "filename": "blanket.tar.gz", "size_bytes": 92348, "sha256": "..." },
-  "files": [ { "path": "AGENTS.md", "size": 4612, "sha256": "...", "mode": 644 }, ... ]
-}
-```
-
-`pull-self` diffs against `files[]`, not the tarball contents. `tarball.sha256` is verified before extraction to guard against partial uploads.
-
-## Slack identity (account_id, bot_user_id, app/bot tokens)
-
-Each agent has its own Slack app with two tokens:
-
-- **`bot_token`** (`xoxb-…`) — from OAuth & Permissions → Bot User OAuth Token
-- **`app_token`** (`xapp-…`) — from Basic Information → App-Level Tokens, with `connections:write` scope (used for socket mode)
-
-Tokens are stored in AWS Secrets Manager under `/fleetmind/<fleet_name>/agents/<agent_id>/…` by `fleetmind secrets populate`.
-
-After tokens are stored, `fleetmind slack discover` calls Slack's `auth.test` to fetch each agent's **`bot_user_id`** (`U…`) and writes it back to `fleet.yaml`. The second render uses these IDs to build per-channel `users` allowlists in `openclaw.json` — without them, peer-bot messages are silently dropped.
+You usually don't run `pull-self` directly: `push fleet` triggers it via SSM. But you can also run it manually (SSH/SSM session) when iterating on a single agent. One file gets special handling (`openclaw.json` three-way merge) — see [ARCHITECTURE § openclaw.json three-way merge](./ARCHITECTURE.md#openclawjson-three-way-merge).
 
 ## fleetmind vs. openclaw
 
 Two related repos:
 
-- **fleetmind** (this repo) — operator-side CLI + the per-agent workspace artifacts (`openclaw/skills/`, `openclaw/pm-bot/`, etc.) that ship in the package
+- **fleetmind** (this repo) — operator-side CLI + the per-agent workspace artifacts that ship in the package
 - **openclaw** — the agent runtime: gateway, agent loop, Slack adapter, LLM plugins. Installed on each agent's EC2 by the bootstrap script.
 
 `fleetmind` produces the inputs (`openclaw.json`, `AGENTS.md`, skills); `openclaw` reads them.

@@ -71,7 +71,7 @@ Both files are operator-edited before the first deploy. `COMPANY.md` is optional
 ### Naming conventions
 
 - **`fleet.name`** becomes the prefix for all AWS resource names: VPC, EC2 instances, IAM roles, S3 bucket, DynamoDB table, Secrets Manager paths. Keep it short and lowercase (e.g., `acme-bots`).
-- **Agent `id`** values are lowercase identifiers (e.g., `blanket`, `charlie`). They appear in SSM paths, service unit names, and workspace directories.
+- **Agent `id`** values are lowercase identifiers (e.g., `conductor`, `forge`). They appear in SSM paths, service unit names, and workspace directories.
 
 ### Annotated example
 
@@ -115,8 +115,8 @@ agents:
 
   list:
     # ── PM bot (orchestrator) ──────────────────────────────────────────────
-    - id: blanket
-      name: Blanket
+    - id: conductor
+      name: Conductor
       emoji: 🐈
       role: pm
       description: "Project-manager bot"
@@ -125,42 +125,42 @@ agents:
 
       persona:
         soul: |
-          You are Blanket, a project-manager bot. You receive tasks from humans,
+          You are Conductor, a project-manager bot. You receive tasks from humans,
           delegate to worker bots via the bot-delegation skill, track everything
           in a task ledger, and close the loop on every assignment.
 
       slack:
-        account_id: blanket
+        account_id: conductor
         # bot_user_id filled in by `fleetmind slack discover` after secrets populate.
         # bot_user_id: "U…"
         channels:
           - "C…"    # PM's home channel (humans DM here)
           - "C…"    # shared delegation channel (workers also join this one)
-        bot_token: "${BLANKET_BOT_TOKEN}"
-        app_token: "${BLANKET_APP_TOKEN}"
+        bot_token: "${CONDUCTOR_BOT_TOKEN}"
+        app_token: "${CONDUCTOR_APP_TOKEN}"
         background_color: "#2C3E50"
         long_description: >
-          Blanket is the PM bot for the acme-bots fleet. It delegates work to
-          Charlie (backend worker), tracks tasks in DynamoDB, and closes the loop.
+          Conductor is the PM bot for the acme-bots fleet. It delegates work to
+          Forge (backend worker), tracks tasks in DynamoDB, and closes the loop.
 
       skills:
         - name: bot-delegation      # PM skill — assigns tasks to workers
           source: fleetmind
 
       agent_to_agent:
-        can_send_to: [charlie]      # which workers this PM can delegate to
+        can_send_to: [forge]      # which workers this PM can delegate to
 
       delegation:
-        worker_bots: [charlie]
+        worker_bots: [forge]
         sweeps:
-          - name: blanket-sweep-charlie
-            worker_id: charlie
+          - name: conductor-sweep-forge
+            worker_id: forge
             every: 5m              # check for task completions every 5 minutes
             model: anthropic/claude-haiku-4-5
 
     # ── Worker bot ─────────────────────────────────────────────────────────
-    - id: charlie
-      name: Charlie
+    - id: forge
+      name: Forge
       emoji: ⚙️
       role: backend-worker
       description: "Backend specialty worker"
@@ -168,27 +168,27 @@ agents:
 
       persona:
         soul: |
-          You are Charlie, a backend worker. You accept delegated tasks from
-          Blanket, acknowledge with :eyes:, ship the work, and report back.
+          You are Forge, a backend worker. You accept delegated tasks from
+          Conductor, acknowledge with :eyes:, ship the work, and report back.
 
       slack:
-        account_id: charlie
+        account_id: forge
         # bot_user_id: "U…"  (filled by `fleetmind slack discover`)
         channels:
           - "C…"    # shared delegation channel (same as PM's delegation channel)
-        bot_token: "${CHARLIE_BOT_TOKEN}"
-        app_token: "${CHARLIE_APP_TOKEN}"
+        bot_token: "${FORGE_BOT_TOKEN}"
+        app_token: "${FORGE_APP_TOKEN}"
         background_color: "#8B4513"
         long_description: >
-          Charlie is the backend worker for the acme-bots fleet. Receives task
-          envelopes from Blanket, ships work, and posts completion summaries.
+          Forge is the backend worker for the acme-bots fleet. Receives task
+          envelopes from Conductor, ships work, and posts completion summaries.
 
       skills:
         - name: bot-reception       # worker skill — receives delegated tasks
           source: fleetmind
 
       agent_to_agent:
-        can_send_to: [blanket]      # workers send results back to PM
+        can_send_to: [conductor]      # workers send results back to PM
 
       delegation:
         specialty: backend
@@ -325,18 +325,13 @@ Create `workspaces/acme-bots.tfvars` (in this repo (created from `fleetmind-temp
 # workspaces/acme-bots.tfvars — infra knobs only
 
 aws_region    = "us-west-2"
-instance_type = "t3.medium"    # or t4g.medium for arm64 Graviton
-
-# Gateway port per agent. Keys must match agent ids in fleet.yaml.
-agent_ports = {
-  blanket = 18789
-  charlie = 18790
-}
+architecture  = "arm64"        # or "x86_64" — must match instance_type
+instance_type = "t4g.large"    # arm64 Graviton; pick a t3.*/t4.* if x86_64
 
 # Software versions pinned to a known-good release.
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.4.3"   # pin to current stable
+fleetmind_version = "0.6.3"   # pin to current stable
 
 # Task-ledger submodule (inter-bot delegation DynamoDB + EventBridge).
 delegation_enabled = true
@@ -410,8 +405,8 @@ The auto.tfvars looks like:
 
 ```hcl
 fleet_name             = "acme-bots"
-agent_names            = ["blanket", "charlie"]
-agent_orchestrators    = { blanket = true, charlie = false }
+agent_names            = ["conductor", "forge"]
+agent_orchestrators    = { conductor = true, forge = false }
 wake_target_session_key = "CXXXXXXXXXX"   # PM's first channel
 ```
 
@@ -441,7 +436,7 @@ Each EC2 instance runs a multi-stage bootstrap script on first launch. Watch for
 terraform output -json instance_ids
 
 # For each agent:
-INSTANCE_ID=$(terraform output -json instance_ids | jq -r '.blanket')
+INSTANCE_ID=$(terraform output -json instance_ids | jq -r '.conductor')
 aws ec2 get-console-output \
   --instance-id "$INSTANCE_ID" \
   --region us-west-2 \
@@ -452,7 +447,7 @@ aws ec2 get-console-output \
 Look for:
 
 ```
-[bootstrap] Done. Agent blanket provisioned.
+[bootstrap] Done. Agent conductor provisioned.
 ```
 
 If you don't see it after 5 minutes, check for errors earlier in the console output (common: missing SSM parameter, IAM permission gap, network connectivity).
@@ -514,7 +509,7 @@ SSM into each instance to confirm:
 # Look up an instance ID
 INSTANCE_ID=$(aws ssm describe-instance-information \
   --filters "Key=tag:fleetmind:fleet_name,Values=acme-bots" \
-            "Key=tag:fleetmind:agent_id,Values=blanket" \
+            "Key=tag:fleetmind:agent_id,Values=conductor" \
   --query 'InstanceInformationList[0].InstanceId' \
   --output text \
   --region us-west-2)
@@ -525,14 +520,14 @@ aws ssm start-session --target "$INSTANCE_ID" --region us-west-2
 Once inside:
 
 ```bash
-sudo systemctl status openclaw-blanket --no-pager -l
-sudo journalctl -u openclaw-blanket -n 50 --no-pager
+sudo systemctl status openclaw-conductor --no-pager -l
+sudo journalctl -u openclaw-conductor -n 50 --no-pager
 ```
 
 Healthy output looks like:
 
 ```
-● openclaw-blanket.service - OpenClaw Gateway (blanket)
+● openclaw-conductor.service - OpenClaw Gateway (conductor)
    Active: active (running) since ...
 ...
 [gateway] ready
@@ -549,7 +544,7 @@ Repeat for each agent.
 
 **Inter-bot delegation:** Ask the PM to delegate a simple task to the worker. Watch for the full round-trip:
 
-1. PM posts a task envelope in the delegation channel mentioning `<@charlie-user-id>`
+1. PM posts a task envelope in the delegation channel mentioning `<@forge-user-id>`
 2. Worker reacts `:eyes:` to acknowledge pickup
 3. Worker completes the task and posts a completion summary in the thread
 4. PM's sweep (every 5 minutes, or nudge it manually) detects the `shipped` state and closes the loop
@@ -565,7 +560,7 @@ If your agents need to push code, open PRs, or manage issues, give each one a de
 **Create the app** (one per agent that needs GitHub access):
 
 1. Navigate to `https://github.com/organizations/<org>/settings/apps/new`
-2. Name: `<FleetName> <AgentName> Bot` (e.g., "AcmeBots Blanket Bot")
+2. Name: `<FleetName> <AgentName> Bot` (e.g., "AcmeBots Conductor Bot")
 3. Webhook: disabled
 4. Repository permissions: Contents R+W, Pull requests R+W, Issues R+W, Actions R+W, Checks R, Metadata R
 5. Install on the specific project repo only
@@ -575,16 +570,16 @@ If your agents need to push code, open PRs, or manage issues, give each one a de
 ```bash
 fleetmind github-app store \
   --fleet acme-bots \
-  --agent blanket \
+  --agent conductor \
   --app-id <app-id> \
   --installation-id <installation-id> \
-  --pem-file /path/to/blanket-bot.private-key.pem
+  --pem-file /path/to/conductor-bot.private-key.pem
 ```
 
 Shred the local `.pem` after storing:
 
 ```bash
-shred -u /path/to/blanket-bot.private-key.pem
+shred -u /path/to/conductor-bot.private-key.pem
 ```
 
 **Verify on the bot EC2:**

@@ -83,7 +83,6 @@ Copy the template's starter and adjust:
 cp workspaces/default.tfvars workspaces/fleet-b.tfvars
 # Edit:
 #   - aws_region (if different)
-#   - agent_ports
 #   - delegation_enabled
 #   - wake_target_session_key
 ```

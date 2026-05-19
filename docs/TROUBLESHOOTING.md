@@ -219,6 +219,37 @@ terraform apply -var-file=workspaces/<fleet>.tfvars -var-file=workspaces/<fleet>
 3. Confirm the instance's IAM role has `AmazonSSMManagedInstanceCore` attached (the Terraform module attaches this by default).
 4. Re-run `fleetmind push fleet --fleet fleet-<name>.yaml --restart`.
 
+### Bot falls back to `~/.openclaw/workspace/` instead of the fleet workspace
+
+**Symptom:** A bot writes memory files or reads config from `~/.openclaw/workspace/<agent_id>/` but the configured fleet workspace is `/opt/openclaw/workspace/<agent_id>/`. The two paths are the same directory on a standard fleet EC2 (because `HOME` is set to the workspace root in the systemd unit), but on a non-standard setup they diverge, causing the bot to load a default OpenClaw config without fleet context.
+
+**Cause:** The `workspace` field is missing from the bot's live `.openclaw/openclaw.json`. OpenClaw falls back to `~/.openclaw/workspace/<agent_id>` when `agents.list[].workspace` isn't set. The field is written by `fleetmind render` (from `agents.defaults.workspace_base` in `fleet.yaml`) and deployed by `fleetmind push fleet`. It can go missing if:
+- The live `openclaw.json` was created by OpenClaw's self-init before the first push ran (a window where `ConditionPathExists` was not yet satisfied), and then the push-time protected-path logic silently skipped updating it.
+- The `workspace_base` key is absent from `fleet.yaml` and the renderer defaulted to an empty value.
+
+**Fix:** Run a fresh push to overwrite the live `openclaw.json` with the correctly-rendered config:
+
+```bash
+fleetmind push fleet --fleet fleet-<name>.yaml --restart
+```
+
+This uses the three-way merge in `pull-self` to update `openclaw.json` while preserving any live operator patches. After restart, verify with an SSM session:
+
+```bash
+python3 -c "import json; d=json.load(open('.openclaw/openclaw.json')); print([a.get('workspace') for a in d['agents']['list']])"
+# Expected: ['/opt/openclaw/workspace/<agent_id>']
+```
+
+If the `workspace_base` key is missing from `fleet.yaml`, add it before pushing:
+
+```yaml
+agents:
+  defaults:
+    workspace_base: /opt/openclaw/workspace  # required — must match WORKSPACE_BASE in bootstrap
+```
+
+---
+
 ### `openclaw.json` operator-patch handling and drift
 
 **Symptom:** Somebody hand-edited `.openclaw/openclaw.json` on the EC2; subsequent `pull-self --apply` runs surprise people about whether the edit survives, gets overwritten, or interacts unexpectedly with the next `fleet.yaml`-driven render of the same key.

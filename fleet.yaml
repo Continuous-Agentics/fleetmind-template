@@ -43,6 +43,12 @@ delegation:
 agents:
   defaults:
     model: anthropic/claude-haiku-4-5
+    # workspace_base: path on each EC2 host where agent workspaces live.
+    # The renderer writes this into every agent's openclaw.json as the
+    # `agents.list[].workspace` field. OpenClaw uses this field to locate
+    # the workspace directory; without it bots fall back to
+    # ~/.openclaw/workspace/ and may share state unintentionally.
+    # Keep in sync with WORKSPACE_BASE in the Terraform bootstrap script.
     workspace_base: /opt/openclaw/workspace
     plugins:
       - anthropic

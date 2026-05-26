@@ -43,13 +43,11 @@ delegation:
   # below when you change fleet.name above.
   table_name: my-fleet-tasks
   s3_bucket: my-fleet-ledger
-  # ── NATS transport (optional) ─────────────────────────────────────────────
-  # When enabled, agents use NATS (via Cloud Map discovery) instead of Slack
-  # for inter-bot messaging. Provisioned by var.nats_enabled in terraform-aws-fleetmind.
-  # Omit or set nats.enabled: false for Slack-only messaging.
-  nats:
-    enabled: false                              # set to true to enable NATS transport
-    mode: standard                              # 'standard' (Cloud Map DNS) or future alternatives
+  # ── NATS transport (standard) ──────────────────────────────────────────
+  # Agents use NATS (Cloud Map discovery) for inter-bot messaging.
+  # Provisioned by var.nats_enabled in terraform-aws-fleetmind (defaults true).
+  # Omit this block entirely for defaults (mode: standard).
+  # nats: {}                                    # uncomment to customize (e.g., mode: embedded)
 
 agents:
   defaults:

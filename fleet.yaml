@@ -4,6 +4,10 @@
 # (fleet_name, agent_names, agent_orchestrators, wake_target_session_key).
 # Workspace = Terraform workspace name (`terraform workspace new <name>`).
 #
+# Delegation transport: NATS (feat/nats-transport). Each agent runs a
+# fleetmind-nats-<agent>.service subscriber. Add a `delegation.nats` block
+# (see docs/SETUP-A-FLEET.md §NATS transport) to enable the push-based wake path.
+#
 # Below is a minimal 2-bot example: one PM (Conductor) and one worker (Forge).
 # Edit names, models, channels, and personas before your first apply.
 

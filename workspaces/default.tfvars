@@ -27,8 +27,11 @@ node_version      = "22"
 fleetmind_version = "0.6.3"
 
 # ── Delegation substrate ────────────────────────────────────────────────────
-# Task-ledger DDB + S3 narratives + EventBridge Pipe. Default true.
+# Task-ledger DDB + S3 narratives. Default true.
 # Set false only for single-bot fleets that don't use bot-to-bot delegation.
+# Note: with the NATS transport, the EventBridge wake path is replaced by
+# the NATS subscriber services (fleetmind-nats-<agent>.service). The TF
+# module still provisions the task-ledger DDB + S3 when delegation_enabled=true.
 delegation_enabled = true
 
 # ── VPC interface endpoints ─────────────────────────────────────────────────

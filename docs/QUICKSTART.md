@@ -69,8 +69,7 @@ agents:
       persona:
         soul: |
           You are PM Bot, a project-management bot. You receive tasks from humans, delegate
-          to worker bots via the bot-delegation skill, track everything in a
-          task ledger, and close the loop.
+          to worker bots via NATS, track everything in a task ledger, and close the loop.
       slack:
         account_id: pm
         channels:
@@ -99,7 +98,7 @@ agents:
       persona:
         soul: |
           You are Worker Bot, a backend worker bot. You accept delegated tasks from
-          the PM, acknowledge with :eyes:, ship the work, and report back.
+          the PM via NATS, acknowledge with :eyes:, ship the work, and report back.
       slack:
         account_id: worker
         channels:
@@ -123,6 +122,13 @@ openclaw:
     port: 18789
     mode: local
     bind: loopback
+  # Hooks endpoint — used by wakeAgent() in the NATS subscriber to wake the
+  # OpenClaw session. Token is generated at bootstrap and injected via
+  # OPENCLAW_HOOKS_TOKEN in the service environment (see §6 below).
+  hooks:
+    enabled: true
+    path: /hooks
+    allowed_agent_ids: [main]
   slack:
     mode: socket
     typing_reaction: black_cat
@@ -184,7 +190,7 @@ slack:
     - "CYYYYYYYYYY"   # #acme-delegation only
 ```
 
-> **Why now and not later:** `fleetmind render` derives `wake_target_session_key` from the PM's first channel ID. If the channel isn't filled in, the Terraform-managed EventBridge wake target won't work.
+> **Why now and not later:** `fleetmind render` derives `wake_target_session_key` from the PM's first channel ID. Filling it in before the first render produces the correct session-key format in `derived.tfvars`.
 
 ## 4. First render (~5s)
 
@@ -281,12 +287,64 @@ In Slack, DM PM Bot in `#acme-pm`:
 
 Watch the round-trip:
 
-1. PM Bot creates a task ledger entry (DDB + S3) and posts a delegation envelope in `#acme-delegation` mentioning `@Worker Bot`
-2. Worker Bot reacts `:eyes:` to acknowledge pickup
-3. Worker Bot ships the work and posts a completion summary in the thread
-4. Worker Bot's `shipped` state fires the [wake pipeline](./CONCEPTS.md#wake-pipeline); PM Bot wakes and posts a closeout summary
+1. PM Bot creates a task ledger entry (DDB + S3) and **publishes a delegation event on the NATS bus** targeting Worker Bot
+2. Worker Bot's NATS subscriber (`fleetmind-nats-worker.service`) receives the event, auto-acks in DDB, and wakes the Worker OpenClaw session
+3. Worker Bot opens a Slack thread with the human requestor (no Slack envelope — NATS is the transport)
+4. Worker Bot ships the work, posts a completion summary in the requestor's thread
+5. Worker Bot calls `fleetmind task ship` which publishes a `ship` event on NATS
+6. PM Bot's NATS subscriber (`fleetmind-nats-pm.service`) receives the ship event and wakes the PM session via `POST /hooks/wake` using `OPENCLAW_HOOKS_TOKEN`
 
 You just delegated a task across two isolated EC2 hosts with a durable audit trail. ✨
+
+---
+
+## 6. NATS transport + hooks: how the wake pipeline works
+
+With the NATS transport, delegation is no longer posted as a Slack message ("envelope"). Instead, `fleetmind` publishes typed events on a NATS message bus and each agent runs a long-lived subscriber service.
+
+### Systemd services
+
+The bootstrap script writes two units for each agent:
+
+| Service | Mode | Description |
+|---------|------|-------------|
+| `fleetmind-nats-pm.service` | `--mode pm` | PM subscriber — receives `ship`/`block` events, wakes PM session via `/hooks/wake` |
+| `fleetmind-nats-worker.service` | `--mode worker` | Worker subscriber — receives delegation events, auto-acks in DDB, wakes worker session |
+
+Both are path-activated: a `.path` unit watches for `fleet.yaml` and starts the service automatically once `fleetmind push fleet` lands the workspace. No manual `systemctl start` needed.
+
+### NATS config in fleet.yaml
+
+Add a `delegation.nats` block to enable the NATS bus:
+
+```yaml
+delegation:
+  enabled: true
+  aws_region: us-west-2
+  table_name: acme-tasks
+  s3_bucket: acme-ledger
+  nats:
+    servers:
+      - nats://nats.acme.internal:4222   # Cloud Map DNS or explicit IP
+    subject_prefix: fleetmind            # default; all events go to fleetmind.task.<id>.*
+    connect_timeout_ms: 5000
+    max_reconnect: -1                    # unlimited reconnects
+```
+
+If `delegation.nats` is absent, the subscriber service exits 0 and systemd leaves it alone — the fleet still works, but without the push-based wake path.
+
+### Hooks config and OPENCLAW_HOOKS_TOKEN
+
+The PM subscriber wakes the OpenClaw PM session by calling `POST /hooks/wake` on the gateway. This requires `hooks.token` in `openclaw.json` — a secret **distinct** from `gateway.auth.token` (OpenClaw enforces this and returns 401 if the same token is reused).
+
+**How the token gets there (automatic — no operator action needed):**
+
+1. Bootstrap (STAGE 7c) generates `openssl rand -hex 32` and stores it in Secrets Manager at `<fleet>/agents/<agent>/hooks`.
+2. `fetch-agent-secrets` (runs as ExecStartPre on every service start) fetches it and writes `OPENCLAW_HOOKS_TOKEN=<token>` and `<AGENT_UPPER>_HOOKS_TOKEN=<token>` to `/run/openclaw-<agent>.env`.
+3. `fleetmind render` emits `hooks.token: ${<AGENT_UPPER>_HOOKS_TOKEN}` into `openclaw.json`; OpenClaw substitutes the env var at startup.
+4. The NATS subscriber service sources the same env file — `OPENCLAW_HOOKS_TOKEN` is available when `wakeAgent()` calls `/hooks/wake`.
+
+The end result: `wakeAgent()` returns 2xx and the PM session wakes immediately on worker ship/block events.
 
 ---
 

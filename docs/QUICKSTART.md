@@ -190,7 +190,7 @@ slack:
     - "CYYYYYYYYYY"   # #acme-delegation only
 ```
 
-> **Why now and not later:** `fleetmind render` derives `wake_target_session_key` from the PM's first channel ID. Filling it in before the first render produces the correct session-key format in `derived.tfvars`.
+> **Why now and not later:** Channel IDs must be filled in before the first render so `fleetmind render` can include peer bot IDs in each agent's Slack allowlist. Channels without real IDs produce placeholder allowlists and inter-bot Slack messages will be silently dropped.
 
 ## 4. First render (~5s)
 

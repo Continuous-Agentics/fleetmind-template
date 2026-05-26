@@ -1,14 +1,14 @@
 # fleetmind-template
 
-> ⚠️ **This is a GitHub template repo — do not fork it.**
+> ⚠️ **This is a GitHub template repo - do not fork it.**
 > Click [**Use this template**](../../generate) to create your own fleet repo, then clone that.
 > Forking gives you the wrong git history and no clean way to stay current.
 
 Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Create a repo from this template, edit `fleet.yaml` and `COMPANY.md`, and either run the guided wizard or follow the manual steps below.
 
 > **Before onboarding, fill out two files:**
-> 1. *`fleet.yaml`* — declare your agents (PM bot, workers, their personas, models, Slack/GitHub identities)
-> 2. *`COMPANY.md`* — fleet-wide org context that every bot reads on startup (mission, products, terminology, norms, out-of-scope boundaries). The template ships a starter with placeholder sections. Skip-or-omit is allowed but strongly discouraged: bots without COMPANY.md ask basic company questions in every conversation.
+> 1. *`fleet.yaml`* - declare your agents (PM bot, workers, their personas, models, Slack/GitHub identities)
+> 2. *`COMPANY.md`* - fleet-wide org context that every bot reads on startup (mission, products, terminology, norms, out-of-scope boundaries). The template ships a starter with placeholder sections. Skip-or-omit is allowed but strongly discouraged: bots without COMPANY.md ask basic company questions in every conversation.
 
 This repo *consumes* [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) as a module. The current pin lives in [`main.tf`](main.tf) (search for `?ref=v`). Bump it there to upgrade.
 
@@ -37,7 +37,7 @@ fleetmind-template/
 - AWS account with admin or equivalent permissions
 - Terraform `>= 1.5`
 - Node.js `>= 22`
-- `@continuous-agentics/fleetmind >= 0.4.19` CLI: `npm install -g @continuous-agentics/fleetmind` *(requires GitHub Packages auth — see the [Fleetmind README](https://github.com/Continuous-Agentics/fleetmind))*
+- `@continuous-agentics/fleetmind >= 0.4.19` CLI: `npm install -g @continuous-agentics/fleetmind` *(requires GitHub Packages auth - see the [Fleetmind README](https://github.com/Continuous-Agentics/fleetmind))*
 - Slack workspace admin (for creating per-bot Slack apps)
 
 ## One-time setup per operator
@@ -69,7 +69,7 @@ fleetmind-template/
       --billing-mode PAY_PER_REQUEST \
       --region us-west-2
     ```
-3. *Copy `backend.example.hcl` to `backend.hcl`* and fill in the bucket/region/table. `backend.hcl` is gitignored — operator-local.
+3. *Copy `backend.example.hcl` to `backend.hcl`* and fill in the bucket/region/table. `backend.hcl` is gitignored - operator-local.
 
 ---
 
@@ -85,7 +85,7 @@ fleetmind onboard
 **What it does:**
 
 | Step | What happens |
-|------|--------------|
+|------|--------------|  
 | 1 | Validates `fleet.yaml` |
 | 2 | Generates Slack app manifests (`fleetmind slack manifests`) |
 | 3 | Prompts for Slack credentials per agent (bot token, signing secret, app token, channel IDs) |
@@ -94,12 +94,12 @@ fleetmind onboard
 | 6 | Checks/sets the shared GitHub Packages PAT in SSM |
 | 7 | Runs `fleetmind render` |
 | 8 | Prints the exact `terraform init` + `apply` commands and waits for you to run them |
-| 9 | Populates Secrets Manager (Slack + Anthropic keys) |
+| 9 | Populates Secrets Manager (Slack + Anthropic keys) — **auto-generates `OPENCLAW_HOOKS_TOKEN`** per agent, stored at `<fleet>/agents/<agent>/hooks` in Secrets Manager; required by the NATS wake path |
 | 10 | Stores GitHub App credentials in SSM |
-| 11 | Runs `fleetmind push fleet --restart --upgrade-cli` |
+| 11 | Runs `fleetmind push fleet --restart --upgrade-cli` — activates `fleetmind-nats-<agent>.service` on each host via the path unit |
 | 12 | Prints `terraform output ssm_connect` for verification |
 
-Re-running `fleetmind onboard` is safe — completed steps are detected and skipped automatically.
+Re-running `fleetmind onboard` is safe - completed steps are detected and skipped automatically.
 
 ---
 
@@ -107,13 +107,13 @@ Re-running `fleetmind onboard` is safe — completed steps are detected and skip
 
 If you prefer to run each step yourself, or need to troubleshoot a specific step, see [`docs/QUICKSTART.md`](docs/QUICKSTART.md) for the 30-minute happy path and [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) for the comprehensive every-option reference. Per-topic guides:
 
-- [`docs/CONCEPTS.md`](docs/CONCEPTS.md) — vocabulary (fleet, agent, workspace, persona, skill, plugin, ContextStore, task ledger, delegation, wake pipeline, sweep, lifecycle, render/push/pull-self)
-- [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — narrative happy path, 30-min bring-up
-- [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) — comprehensive bring-up reference
-- [`docs/MULTI-FLEET.md`](docs/MULTI-FLEET.md) — running multiple fleets in one AWS account
-- [`docs/GITHUB-APPS.md`](docs/GITHUB-APPS.md) — per-agent GitHub App credential flow
-- [`docs/OPERATING.md`](docs/OPERATING.md) — day-to-day ops: push, pull-self, single-agent deploys, restart semantics, SSM-into-bot, log inspection
-- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) — symptom → cause → fix for install, Slack, Terraform, deploy, delegation, runtime failures
+- [`docs/CONCEPTS.md`](docs/CONCEPTS.md) - vocabulary (fleet, agent, workspace, persona, skill, plugin, ContextStore, task ledger, delegation, wake pipeline, sweep, lifecycle, render/push/pull-self)
+- [`docs/QUICKSTART.md`](docs/QUICKSTART.md) - narrative happy path, 30-min bring-up
+- [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) - comprehensive bring-up reference
+- [`docs/MULTI-FLEET.md`](docs/MULTI-FLEET.md) - running multiple fleets in one AWS account
+- [`docs/GITHUB-APPS.md`](docs/GITHUB-APPS.md) - per-agent GitHub App credential flow
+- [`docs/OPERATING.md`](docs/OPERATING.md) - day-to-day ops: push, pull-self, single-agent deploys, restart semantics, SSM-into-bot, log inspection
+- [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) - symptom → cause → fix for install, Slack, Terraform, deploy, delegation, runtime failures
 
 ---
 
@@ -141,4 +141,4 @@ One `fleet-<name>.yaml` per fleet + Terraform workspaces for state isolation. Fu
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0 - see [LICENSE](LICENSE).

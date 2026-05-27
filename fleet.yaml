@@ -4,9 +4,9 @@
 # (fleet_name, agent_names, agent_orchestrators, wake_target_session_key).
 # Workspace = Terraform workspace name (`terraform workspace new <name>`).
 #
-# Delegation transport: NATS (feat/nats-transport). Each agent runs a
-# fleetmind-nats-<agent>.service subscriber. Add a `delegation.nats` block
-# (see docs/SETUP-A-FLEET.md §NATS transport) to enable the push-based wake path.
+# Delegation transport: NATS. Each agent runs a fleetmind-nats-<agent>.service
+# subscriber. Add a `delegation.nats` block (see docs/SETUP-A-FLEET.md §NATS
+# transport) to enable the push-based wake path.
 #
 # Below is a minimal 2-bot example: one PM (Conductor) and one worker (Forge).
 # Edit names, models, channels, and personas before your first apply.
@@ -27,6 +27,42 @@ skills_repo:
 secrets:
   provider: env # secrets read from environment variables at render time
 
+# ── Targets (runtime hosts) ───────────────────────────────────────────────────
+# Where each agent runs, how to reach it, and how its gateway is (re)started.
+# Agents reference a target by id (see `target:` on each agent below). This
+# template deploys to AWS EC2 — one host per agent — reached via SSM. The
+# `provider` discriminates the host type and selects its block:
+#   aws-ssm → EC2 reached via SSM (requires aws.region)
+#   ssh     → Mac mini / bare metal / VMware guest (requires ssh.host, ssh.user)
+#   local   → the operator machine (no cloud; dev / single-box deploys)
+#
+# workspace_base is the path on each host where agent workspaces live; the
+# renderer writes it into every agent's openclaw.json `workspace` field. For the
+# AWS path it MUST match WORKSPACE_BASE in the terraform-aws-fleetmind bootstrap.
+targets:
+  conductor-host:
+    provider: aws-ssm
+    os: linux
+    service_manager: systemd
+    workspace_base: /opt/openclaw/workspace
+    aws:
+      region: us-west-2
+  forge-host:
+    provider: aws-ssm
+    os: linux
+    service_manager: systemd
+    workspace_base: /opt/openclaw/workspace
+    aws:
+      region: us-west-2
+  # To run on a Mac mini / bare metal instead, point an agent at an ssh target:
+  # mac-lab-1:
+  #   provider: ssh
+  #   os: macos
+  #   service_manager: launchd
+  #   workspace_base: /Users/openclaw/.openclaw
+  #   ssh:
+  #     host: mac-lab-1.local
+  #     user: openclaw
 
 # ContextStore — shared cross-agent KV state. Must match the table the
 # terraform-aws-fleetmind module provisions (default name: "fleetmind-<fleet>").
@@ -51,14 +87,10 @@ delegation:
 
 agents:
   defaults:
+    # FleetMind is provider-neutral: `model` is a "provider/model" string and
+    # OpenClaw makes the call. Change the prefix (openai/…, google/…) to switch
+    # providers; `fleetmind secrets populate` then stages that provider's key.
     model: anthropic/claude-haiku-4-5
-    # workspace_base: path on each EC2 host where agent workspaces live.
-    # The renderer writes this into every agent's openclaw.json as the
-    # `agents.list[].workspace` field. OpenClaw uses this field to locate
-    # the workspace directory; without it bots fall back to
-    # ~/.openclaw/workspace/ and may share state unintentionally.
-    # Keep in sync with WORKSPACE_BASE in the Terraform bootstrap script.
-    workspace_base: /opt/openclaw/workspace
     plugins:
       - anthropic
     params:
@@ -67,6 +99,10 @@ agents:
       anthropic/claude-sonnet-4-6:
         params:
           cacheRetention: "long" # 1-hour TTL for interactive Sonnet sessions
+    # Optional fleet-wide failover chain OpenClaw tries when `model` fails. Each
+    # agent inherits this unless it sets its own `fallback_models` ([] = strict).
+    # fallback_models:
+    #   - openai/gpt-4o
 
   list:
     # ── PM bot ───────────────────────────────────────────────────────────────
@@ -75,6 +111,7 @@ agents:
       emoji: 🛏️
       role: pm
       orchestrator: true
+      target: conductor-host
       model: anthropic/claude-sonnet-4-6 # PMs get a bit more horsepower
       description: "PM bot for my-fleet."
       persona:
@@ -82,19 +119,20 @@ agents:
           You are Conductor, the project-manager bot for my-fleet. You
           delegate tasks to worker bots via the bot-delegation skill and
           close the loop on every assignment.
-      slack:
-        account_id: conductor
-        # bot_user_id is auto-populated by `fleetmind slack discover` once the
-        # bot tokens are in Secrets Manager (or env). Leave as REPLACE_ME until
-        # then.
-        bot_user_id: "U_REPLACE_ME"
-        channels: ["C_REPLACE_ME"] # PM's home + delegation channel IDs
-        bot_token: "${CONDUCTOR_BOT_TOKEN}"
-        app_token: "${CONDUCTOR_APP_TOKEN}"
-        background_color: "#2C3E50"
-        long_description: >
-          Conductor is the project-manager bot for my-fleet. Delegates tasks
-          to worker bots and tracks them in the fleet's task ledger.
+      channels:
+        - provider: slack
+          account_id: conductor
+          # bot_user_id is auto-populated by `fleetmind slack discover` once the
+          # bot tokens are in Secrets Manager (or env). Leave as REPLACE_ME until
+          # then.
+          bot_user_id: "U_REPLACE_ME"
+          channels: ["C_REPLACE_ME"] # PM's home + delegation channel IDs
+          bot_token: "${CONDUCTOR_BOT_TOKEN}"
+          app_token: "${CONDUCTOR_APP_TOKEN}"
+          background_color: "#2C3E50"
+          long_description: >
+            Conductor is the project-manager bot for my-fleet. Delegates tasks
+            to worker bots and tracks them in the fleet's task ledger.
       skills:
         - name: bot-delegation
           source: fleetmind
@@ -115,22 +153,24 @@ agents:
       emoji: 🔧
       role: worker
       orchestrator: false
+      target: forge-host
       description: "Worker bot for my-fleet (generic)."
       persona:
         soul: |
           You are Forge, a worker bot in my-fleet. You pick up tasks from
           Conductor via the bot-reception skill, do them, and report back.
-      slack:
-        account_id: forge
-        # bot_user_id is auto-populated by `fleetmind slack discover` (see PM bot above).
-        bot_user_id: "U_REPLACE_ME"
-        channels: ["C_REPLACE_ME"]
-        bot_token: "${FORGE_BOT_TOKEN}"
-        app_token: "${FORGE_APP_TOKEN}"
-        background_color: "#1ABC9C"
-        long_description: >
-          Forge is a worker bot in my-fleet. Receives tasks from the PM
-          and ships them back through the ledger.
+      channels:
+        - provider: slack
+          account_id: forge
+          # bot_user_id is auto-populated by `fleetmind slack discover` (see PM bot above).
+          bot_user_id: "U_REPLACE_ME"
+          channels: ["C_REPLACE_ME"]
+          bot_token: "${FORGE_BOT_TOKEN}"
+          app_token: "${FORGE_APP_TOKEN}"
+          background_color: "#1ABC9C"
+          long_description: >
+            Forge is a worker bot in my-fleet. Receives tasks from the PM
+            and ships them back through the ledger.
       skills:
         - name: bot-reception
           source: fleetmind

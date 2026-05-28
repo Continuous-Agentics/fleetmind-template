@@ -48,8 +48,10 @@ secret_recovery_window_days = 0
 
 # ── BYO VPC (optional) ──────────────────────────────────────────────────────
 # Leave vpc_id empty (default) to let the module create a fresh VPC.
-# To deploy into an existing VPC, set vpc_id and both subnet lists.
+# To deploy into an existing VPC, set vpc_id + existing_private_subnet_ids
+# (1+ required; 2+ in distinct AZs recommended for HA). Public subnets are
+# optional — currently unused by the module (no ALB/NLB), reserved for future.
 #
 # vpc_id                      = "vpc-0123456789abcdef0"
-# existing_public_subnet_ids  = ["subnet-aaa", "subnet-bbb"]
 # existing_private_subnet_ids = ["subnet-ccc", "subnet-ddd"]
+# existing_public_subnet_ids  = []  # or ["subnet-aaa", "subnet-bbb"] if you have them

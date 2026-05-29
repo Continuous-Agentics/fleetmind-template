@@ -145,12 +145,11 @@ agents:
         can_send_to: [forge]
       delegation:
         worker_bots: [forge]
-        sweeps:
-          - name: forge-sweep
-            worker_id: forge
-            cron_expr: "*/15 * * * *"
-            tz: UTC
-            description: "Periodic sweep to close open delegations with Forge"
+        # The close-the-loop wake is NATS-push: Forge's NATS subscriber
+        # publishes `task.shipped` / `task.blocked` on close, which wakes
+        # Conductor on the delegation thread. No polling sweep is needed
+        # (and the `delegation.sweeps` field was removed in
+        # fleetmind 0.8.0-beta.8).
 
     # ── Worker bot ───────────────────────────────────────────────────────────
     - id: forge

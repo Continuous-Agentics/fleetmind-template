@@ -118,6 +118,11 @@ agents:
       orchestrator: true
       target: conductor-host
       model: anthropic/claude-sonnet-4-6 # PMs get a bit more horsepower
+      # REQUIRED. Lowercase model-provider tokens this agent needs API keys for.
+      # Drives per-provider Secrets Manager secrets at
+      # <fleet>/agents/conductor/providers/<provider>. Multi-provider agents
+      # list multiple entries (e.g. [anthropic, openai]).
+      providers: [anthropic]
       description: "PM bot for my-fleet."
       persona:
         soul: |
@@ -158,6 +163,8 @@ agents:
       role: worker
       orchestrator: false
       target: forge-host
+      # REQUIRED. See conductor above for the convention.
+      providers: [anthropic]
       description: "Worker bot for my-fleet (generic)."
       persona:
         soul: |

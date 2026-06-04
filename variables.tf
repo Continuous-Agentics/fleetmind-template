@@ -27,6 +27,11 @@ variable "agent_orchestrators" {
   default     = {}
 }
 
+variable "agent_providers" {
+  description = "REQUIRED. Map of agent_id → list of lowercase model-provider tokens (derived from fleet.yaml's per-agent `providers:` list). Drives per-provider Secrets Manager secrets at <fleet>/agents/<agent>/providers/<provider> in terraform-aws-fleetmind >= v0.5.0. No default — explicit declaration is required."
+  type        = map(list(string))
+}
+
 variable "wake_target_session_key" {
   description = "OpenClaw session key for the task-ledger wake-up rule (derived). Format: agent:main:slack:channel:<channel_id>."
   type        = string

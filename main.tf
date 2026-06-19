@@ -44,17 +44,13 @@ provider "aws" {
 }
 
 module "fleetmind" {
-  # NOTE: bump this ref to v0.5.0 once Continuous-Agentics/terraform-aws-fleetmind
-  # cuts that tag (it ships per-provider Secrets Manager secrets + the matching
-  # agent_providers input). Until then, v0.5.0 is the placeholder.
-  source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v0.5.0"
+  source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.0.0"
 
   # ── Derived from fleet.yaml via `fleetmind render` ──────────────────────────
-  fleet_name              = var.fleet_name
-  agent_names             = var.agent_names
-  agent_orchestrators     = var.agent_orchestrators
-  agent_providers         = var.agent_providers
-  wake_target_session_key = var.wake_target_session_key
+  fleet_name          = var.fleet_name
+  agent_names         = var.agent_names
+  agent_orchestrators = var.agent_orchestrators
+  agent_providers     = var.agent_providers
 
   # ── Operator-owned infrastructure knobs ─────────────────────────────────────
   aws_region                  = var.aws_region

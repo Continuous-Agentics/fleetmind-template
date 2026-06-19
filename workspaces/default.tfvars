@@ -1,8 +1,8 @@
 # default.tfvars — infra-only knobs for the default workspace.
 #
-# DO NOT set fleet_name, agent_names, agent_orchestrators, agent_providers,
-# or wake_target_session_key here — those are derived from fleet.yaml by
-# `fleetmind render` into workspaces/default.derived.tfvars (gitignored).
+# DO NOT set fleet_name, agent_names, agent_orchestrators, or agent_providers
+# here — those are derived from fleet.yaml by `fleetmind render` into
+# workspaces/default.derived.tfvars (gitignored).
 
 # ── Region ──────────────────────────────────────────────────────────────────
 aws_region = "us-west-2"

@@ -33,6 +33,24 @@ jobs:
       - name: terraform fmt
         run: terraform fmt -recursive -check -diff
 
+      # The fleetmind module lives in a separate PRIVATE repo
+      # (terraform-aws-fleetmind). The default GITHUB_TOKEN only covers this
+      # repo, so `terraform init` cannot clone it. Mint a short-lived,
+      # read-only token from the fleetmind-ci-module-reader GitHub App and
+      # rewrite github.com clones to use it.
+      - name: Mint module-reader token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: Continuous-Agentics
+          repositories: terraform-aws-fleetmind
+
+      - name: Allow Terraform to clone the private module
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+
       - name: terraform init (no backend)
         run: terraform init -backend=false
 

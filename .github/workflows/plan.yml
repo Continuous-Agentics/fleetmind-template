@@ -25,10 +25,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Pin the Terraform version from .terraform-version so CI matches what
+      # operators run locally (tfenv). The v1.0.0 module uses cross-variable
+      # references in validation blocks, which require Terraform >= 1.9.
+      - name: Read .terraform-version
+        id: tfver
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~> 1.5"
+          terraform_version: ${{ steps.tfver.outputs.version }}
 
       - name: terraform fmt
         run: terraform fmt -recursive -check -diff

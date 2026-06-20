@@ -32,12 +32,6 @@ variable "agent_providers" {
   type        = map(list(string))
 }
 
-variable "wake_target_session_key" {
-  description = "OpenClaw session key for the task-ledger wake-up rule (derived). Format: agent:main:slack:channel:<channel_id>."
-  type        = string
-  default     = ""
-}
-
 # ── Operator-owned infrastructure knobs ──────────────────────────────────────
 # Set these in workspaces/<name>.tfvars.
 

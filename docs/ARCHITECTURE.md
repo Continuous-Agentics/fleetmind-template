@@ -64,16 +64,21 @@ Both lifecycles can still transition to `merged` (e.g. when an associated PR mer
 How a worker's terminal status transition notifies the PM bot across isolated EC2 hosts (no shared process or socket):
 
 ```text
-Worker UpdateItem (shipped|blocked|abandoned|merged)
-  → DDB Stream record
-  → EventBridge Pipe (filters terminal statuses)
-  → EventBridge rule
-  → SSM Run Command on PM's EC2
-  → /opt/openclaw/ddb-wake.sh
-  → openclaw agent --message "DDB_TERMINAL_WAKE: TASK#<id>"
+Worker writes terminal status (shipped|blocked|abandoned|merged)
+  → fleetmind publishes the terminal event to NATS
+  → PM's fleetmind-nats-<pm>.service (`fleetmind nats subscribe --mode pm`) receives it
+  → the subscriber wakes the PM's live session directly
 ```
 
-Provisioned by the [`task-ledger`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind/tree/v0.1.6/modules/task-ledger) submodule of [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind), activated automatically when `delegation_enabled = true`. The DLQ topology (`{prefix}ledger-pipe-dlq`, `{prefix}ledger-wake-dlq`) catches failures for forensics.
+The NATS subscriber services run on each agent EC2, installed by the agent
+bootstrap (STAGE 14) when the fleet is pushed. The session key the subscriber
+wakes is derived at wake time from the live event, not baked into Terraform.
+
+> **History:** earlier versions used a DDB Stream → EventBridge Pipe → SSM Run
+> Command → `ddb-wake.sh` pipeline (with `ledger-pipe-dlq` / `ledger-wake-dlq`
+> DLQs). That path was removed in favor of NATS push; the `task-ledger`
+> submodule no longer provisions any EventBridge/SSM/DLQ wake infrastructure or
+> `wake_target_*` inputs.
 
 ## Sweep
 
@@ -86,7 +91,7 @@ Configured per-PM in `fleet.yaml` under `delegation.sweeps[]`. Typical cadence: 
 `fleetmind render <fleet.yaml>` writes:
 
 - `./rendered/openclaw-<fleet>.json` — per-agent `openclaw.json` slices
-- `workspaces/<fleet>.derived.tfvars` — derived Terraform variables (`fleet_name`, `agent_names`, `agent_orchestrators`, `wake_target_session_key`), written inside this repo (created from `fleetmind-template`) for consumption by the [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) module
+- `workspaces/<fleet>.derived.tfvars` — derived Terraform variables (`fleet_name`, `agent_names`, `agent_orchestrators`, `agent_providers`), written inside this repo (created from `fleetmind-template`) for consumption by the [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) module
 
 The `.derived.tfvars` suffix is intentional: those files are *not* auto-loaded by Terraform — they must be passed explicitly via `-var-file`. This prevents cross-workspace contamination when multiple fleets share an account.
 

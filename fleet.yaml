@@ -1,7 +1,7 @@
 # fleet.yaml — operator-edited declaration of the bots in this fleet.
 #
 # Used by `fleetmind render` to produce workspaces/<workspace>.derived.tfvars
-# (fleet_name, agent_names, agent_orchestrators, wake_target_session_key).
+# (fleet_name, agent_names, agent_orchestrators, agent_providers).
 # Workspace = Terraform workspace name (`terraform workspace new <name>`).
 #
 # Delegation transport: NATS. Each agent runs a fleetmind-nats-<agent>.service

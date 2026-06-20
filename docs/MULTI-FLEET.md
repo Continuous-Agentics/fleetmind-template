@@ -84,7 +84,6 @@ cp workspaces/default.tfvars workspaces/fleet-b.tfvars
 # Edit:
 #   - aws_region (if different)
 #   - delegation_enabled
-#   - wake_target_session_key
 ```
 
 `fleetmind render` (or `push fleet`) also writes a companion `.derived.tfvars` for

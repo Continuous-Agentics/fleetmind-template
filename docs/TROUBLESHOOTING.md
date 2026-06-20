@@ -77,12 +77,6 @@ Then terminate the failed instance (`terraform taint <resource>` + `terraform ap
 
 **Fix:** Ignore. Leaving the field empty is correct.
 
-### `fleetmind render` errors with empty `wake_target_session_key`
-
-**Cause:** The PM's first Slack channel ID isn't filled in yet. `render` derives `wake_target_session_key` from `agents.list[<pm>].slack.channels[0]` — if that value is a placeholder like `"C_HOME_CHANNEL_ID"`, the EventBridge wake pipeline has no target.
-
-**Fix:** Create the Slack apps and channels first, copy each channel ID from Slack's "Copy link" right-click menu (the `C…` segment at the end of the URL), and fill them into `fleet.yaml` before the first render. See [QUICKSTART.md §3](./QUICKSTART.md#3-create-the-slack-apps-and-channels-5-min-manual-ui).
-
 ### Inter-bot messages silently dropped
 
 **Symptom:** PM posts a delegation envelope. Worker never reacts. No errors in either gateway's logs.

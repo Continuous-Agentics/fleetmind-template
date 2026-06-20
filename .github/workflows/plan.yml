@@ -25,13 +25,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Pin the Terraform version from .terraform-version so CI matches what
+      # operators run locally (tfenv). The v1.0.0 module uses cross-variable
+      # references in validation blocks, which require Terraform >= 1.9.
+      - name: Read .terraform-version
+        id: tfver
+        run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~> 1.5"
+          terraform_version: ${{ steps.tfver.outputs.version }}
 
       - name: terraform fmt
         run: terraform fmt -recursive -check -diff
+
+      # The fleetmind module lives in a separate PRIVATE repo
+      # (terraform-aws-fleetmind). The default GITHUB_TOKEN only covers this
+      # repo, so `terraform init` cannot clone it. Mint a short-lived,
+      # read-only token from the fleetmind-ci-module-reader GitHub App and
+      # rewrite github.com clones to use it.
+      - name: Mint module-reader token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CI_APP_ID }}
+          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
+          owner: Continuous-Agentics
+          repositories: terraform-aws-fleetmind
+
+      - name: Allow Terraform to clone the private module
+        run: |
+          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: terraform init (no backend)
         run: terraform init -backend=false

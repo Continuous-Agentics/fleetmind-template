@@ -19,9 +19,22 @@ Compared to a shared Personal Access Token (PAT):
 | **Revocation** | Kills every consumer | Per-agent, independent |
 | **Seat cost** | Consumes a GitHub seat | Free |
 
-## Model: One App Per Agent
+## Model: One App Per Agent (Default On)
 
-Each FleetMind agent that needs GitHub access gets its own GitHub App installed only on its project repo.
+Every FleetMind agent requires its own GitHub App by default, installed only on its project repo. GitHub access is on for all agents unless explicitly disabled.
+
+### Opting an agent out
+
+An agent that never touches code can opt out of GitHub access with the `github_access` flag in `fleet.yaml`. It defaults to `true`:
+
+```yaml
+agents:
+  - id: triage
+    role: worker
+    github_access: false   # no GitHub App created or required for this bot
+```
+
+When `github_access` is `false`, the `onboard` wizard skips GitHub App creation (Step 5) and SSM credential storage (Step 10) for that agent, and the agent's bootstrap does not expect `github-app/*` SSM parameters. When it's `true` (the default), the agent gets a GitHub App with the permission set resolved from its bot-type defaults (overridable via the per-agent `github_app` block).
 
 | | |
 |---|---|
@@ -94,7 +107,7 @@ GH_APP_PEM_FILE=~/Downloads/my-bot.pem \
 
 ## Creating a New App
 
-When provisioning a new agent that needs GitHub access:
+When provisioning a new agent (every agent gets a GitHub App unless it sets `github_access: false`):
 
 ### Step 1 — Create the app in the GitHub UI
 

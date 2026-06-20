@@ -38,9 +38,9 @@ This guide walks through bringing up a new fleet from scratch: defining agents, 
 
 - Admin access to a Slack workspace where you can create new apps and channels
 
-### GitHub (optional)
+### GitHub
 
-- A repo that each bot will operate against (for code, PRs, issues)
+- A repo that each bot will operate against (for code, PRs, issues). By default every agent gets a GitHub App; opt a bot out with `github_access: false` in `fleet.yaml` if it never touches code.
 - A GitHub PAT with `read:packages` for installing fleetmind on EC2 instances (required for bootstrapping)
 
 ### Your fleet repo (created from the template)
@@ -566,11 +566,19 @@ If the PM responds but inter-bot delivery is silent, check that `bot_user_id` va
 
 ---
 
-## 6. GitHub Apps (Optional, Per Bot)
+## 6. GitHub Apps (Default On, Per Bot)
 
-If your agents need to push code, open PRs, or manage issues, give each one a dedicated GitHub App. See [`docs/GITHUB-APPS.md`](./GITHUB-APPS.md) for the full pattern. Summary:
+Every agent requires its own GitHub App by default, so each bot can push code, open PRs, and manage issues in its project repo. This is the default because most FleetMind agents touch code. An agent that genuinely never needs repo access can opt out by setting `github_access: false` on it in `fleet.yaml`; the `onboard` wizard then skips GitHub App creation for that agent. See [`docs/GITHUB-APPS.md`](./GITHUB-APPS.md) for the full pattern. Summary:
 
-**Create the app** (one per agent that needs GitHub access):
+```yaml
+# fleet.yaml — opt a single bot out of GitHub access
+agents:
+  - id: triage
+    role: worker
+    github_access: false   # this bot never touches code; skip its GitHub App
+```
+
+**Create the app** (one per agent that requires GitHub access, i.e. every agent unless `github_access: false`):
 
 1. Navigate to `https://github.com/organizations/<org>/settings/apps/new`
 2. Name: `<FleetName> <AgentName> Bot` (e.g., "AcmeBots Conductor Bot")

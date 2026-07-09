@@ -338,7 +338,7 @@ Likely causes:
 cat ~/.fleetmind/ledger-pending/<task-id>-shipped.md | fleetmind narrative put --task-id <task-id>
 ```
 
-Then re-run the lifecycle transition (`fleetmind task ship --task-id <id>`).
+Then re-run the lifecycle transition (`fleetmind task ship --task-id <hex> --worker <id>`).
 
 ### PM bot not waking on terminal events
 

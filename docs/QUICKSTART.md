@@ -291,7 +291,11 @@ Watch the round-trip:
 2. Worker Bot's NATS subscriber (`fleetmind-nats-worker.service`) receives the event, auto-acks in DDB, and wakes the Worker OpenClaw session
 3. Worker Bot opens a Slack thread with the human requestor (no Slack envelope — NATS is the transport)
 4. Worker Bot ships the work, posts a completion summary in the requestor's thread
-5. Worker Bot calls `fleetmind task ship` which publishes a `ship` event on NATS
+5. Worker Bot calls `fleetmind task ship --task-id <hex> --worker <id>` which publishes a `ship` event on NATS
+   > **`fleetmind task ship` flags**:
+   > `--task-id <hex>` (required) — the task ID from the ledger row
+   > `--worker <id>` (required) — the worker bot identifier
+   > `--project <slug>` (optional) — avoids a GetItem round-trip; `--fleet <path-or-name>`, `--json` also accepted
 6. PM Bot's NATS subscriber (`fleetmind-nats-pm.service`) receives the ship event and wakes the PM session via `POST /hooks/wake` using `OPENCLAW_HOOKS_TOKEN`
 
 You just delegated a task across two isolated EC2 hosts with a durable audit trail. ✨

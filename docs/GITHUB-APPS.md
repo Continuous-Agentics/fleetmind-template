@@ -143,15 +143,20 @@ On the app's settings page, scroll to **Private keys** and click **Generate a pr
 
 ### Step 4 — Store credentials in SSM
 
+> **`--fleet` accepts either a fleet name (`acme-bots`) or a path to the fleet YAML
+> (`fleet-acme-bots.yaml`).** Both forms are equivalent — the CLI resolver tries
+> the value as a path first, then as a registered fleet name.
+
 **Preferred (CLI):**
 
 ```bash
 fleetmind github-app store \
-  --fleet <fleet_name> \
+  --fleet <path-or-name> \
   --agent <agent_id> \
   --app-id <app-id> \
   --installation-id <installation-id> \
   --pem-file /path/to/private-key.pem
+# e.g. --fleet fleet-acme-bots.yaml   OR   --fleet acme-bots
 ```
 
 Add `--dry-run` to preview what would be written without calling AWS.
@@ -160,11 +165,12 @@ Add `--dry-run` to preview what would be written without calling AWS.
 
 ```bash
 infra/scripts/store-bot-github-app.sh \
-  --fleet <fleet_name> \
+  --fleet <path-or-name> \
   --agent <agent_id> \
   --app-id <app-id> \
   --installation-id <installation-id> \
   --pem-file /path/to/private-key.pem
+# e.g. --fleet fleet-acme-bots.yaml   OR   --fleet acme-bots
 ```
 
 Both methods store:

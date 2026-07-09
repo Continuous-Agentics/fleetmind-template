@@ -147,3 +147,74 @@ terraform init -backend-config=backend.hcl -migrate-state
 ```
 
 After migration, the local `terraform.tfstate*` files can be deleted (they're orphaned).
+
+---
+
+## Tearing down a fleet
+
+> ⚠️ **Do NOT delete the shared Terraform state S3 bucket or DynamoDB lock table** — they are used by all fleets. Only remove per-fleet resources.
+
+### 1. Terraform destroy
+
+```bash
+terraform workspace select <fleet-name>
+terraform destroy -var-file=workspaces/<fleet-name>.tfvars -var-file=workspaces/<fleet-name>.derived.tfvars
+```
+
+This removes the VPC, NAT Gateway, EC2 instances, IAM roles, S3 ledger bucket, DDB tasks table, EventBridge rules, and NATS resources for the fleet.
+
+### 2. Secrets Manager cleanup
+
+FleetMind stores bot credentials under `/fleetmind/<fleet>/agents/<agent>/...`. Delete each secret after `terraform destroy` — Secrets Manager does not remove them automatically.
+
+```bash
+# List all secrets for the fleet
+aws secretsmanager list-secrets \
+  --filter Key=name,Values=/fleetmind/<fleet>/ \
+  --query 'SecretList[].Name' --output text
+
+# Delete each secret (force-delete skips the 30-day recovery window)
+aws secretsmanager delete-secret \
+  --secret-id /fleetmind/<fleet>/agents/<agent>/slack \
+  --force-delete-without-recovery
+# Repeat for each secret path returned above.
+```
+
+Common paths per agent:
+- `/fleetmind/<fleet>/agents/<agent>/slack`
+- `/fleetmind/<fleet>/agents/<agent>/anthropic`
+- `/fleetmind/<fleet>/agents/<agent>/hooks`
+- `/fleetmind/<fleet>/agents/<agent>/github-packages`
+
+### 3. SSM Parameter Store cleanup
+
+GitHub App credentials (app-id, installation-id, PEM) are stored in SSM and are also not removed by `terraform destroy`.
+
+```bash
+# Enumerate all SSM parameters for the fleet
+aws ssm get-parameters-by-path \
+  --path /fleetmind/<fleet>/ \
+  --recursive \
+  --query 'Parameters[].Name' --output text
+
+# Delete them in one call (up to 10 at a time)
+aws ssm delete-parameters \
+  --names \
+    /fleetmind/<fleet>/agents/<agent>/github-app/app-id \
+    /fleetmind/<fleet>/agents/<agent>/github-app/installation-id \
+    /fleetmind/<fleet>/agents/<agent>/github-app/pem
+# Repeat for each agent, or pipe the get-parameters-by-path output into
+# xargs to batch-delete in one command:
+aws ssm get-parameters-by-path \
+  --path /fleetmind/<fleet>/ \
+  --recursive \
+  --query 'Parameters[].Name' \
+  --output text | xargs -n10 aws ssm delete-parameters --names
+```
+
+### 4. Remove the Terraform workspace
+
+```bash
+terraform workspace select default
+terraform workspace delete <fleet-name>
+```

@@ -77,6 +77,11 @@ Both files are operator-edited before the first deploy. `COMPANY.md` is optional
 
 The following is a real fleet definition — one orchestrator PM and one worker — heavily annotated:
 
+> **`--fleet` resolver:** All `fleetmind` CLI commands accept either a **fleet name** (e.g. `acme-bots`)
+> or a **path** to the fleet YAML (e.g. `fleet-acme-bots.yaml`). Both forms are equivalent —
+> the resolver tries the value as a path first, then as a registered fleet name.
+> Examples in this guide use the path form; substitute the name form where convenient.
+
 ```yaml
 # fleet-acme-bots.yaml
 # One PM bot (orchestrator) + one backend worker.
@@ -557,7 +562,9 @@ Repeat for each agent.
 2. Worker's NATS subscriber (`fleetmind-nats-worker.service`) receives the event, auto-acks in DDB, and wakes the worker OpenClaw session
 3. Worker opens a Slack thread with the human requestor (there is **no Slack delegation envelope** — NATS is the transport)
 4. Worker ships the work and posts a completion summary in the requestor's thread
-5. Worker calls `fleetmind task ship`, which publishes a `ship` event on NATS
+5. Worker calls `fleetmind task ship --task-id <task-id>`, which publishes a `ship` event on NATS
+   > **`fleetmind task ship` flags** (canonical form — confirm exact flag set with `fleetmind task ship --help`):
+   > `--task-id <id>` (required) — the 8-character hex task ID from the ledger row
 6. PM's NATS subscriber (`fleetmind-nats-pm.service`) receives the event and wakes the PM session via `POST /hooks/wake`
 
 > **NATS subscribers not running?** Check `sudo systemctl status fleetmind-nats-conductor.service` on the PM instance. The `.path` unit activates the service once `fleet.yaml` lands. If `fleet.yaml` is present but the service isn't running, check `OPENCLAW_HOOKS_TOKEN` is set in `/run/openclaw-<agent>.env` (see [§NATS transport](#nats-transport-and-hooks-config)).
@@ -595,6 +602,7 @@ fleetmind github-app store \
   --app-id <app-id> \
   --installation-id <installation-id> \
   --pem-file /path/to/conductor-bot.private-key.pem
+# --fleet also accepts a path: --fleet fleet-acme-bots.yaml
 ```
 
 Shred the local `.pem` after storing:

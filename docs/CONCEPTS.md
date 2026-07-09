@@ -43,7 +43,7 @@ Throughout the codebase and docs, "agent" and "bot" are used interchangeably.
 Two roles, both implemented as agents:
 
 - **Orchestrator** (`orchestrator: true`, conventionally one per fleet) — typically a PM bot. Receives tasks from humans, creates [task ledger](#task-ledger) entries, delegates to workers, and closes the loop. Has the `bot-delegation` skill.
-- **Worker** — accepts delegations from the PM, ships work, posts results. Has the `bot-reception` skill. Workers can have a `delegation.specialty` (e.g. `frontend`, `backend`) used by the PM for routing.
+- **Worker** — accepts delegations from the PM, ships work, posts results. Has the `bot-reception` skill. Workers can have a `delegation.specialty` (e.g. `frontend`, `backend`) used by the PM for routing. A worker can also **self-start** (see below) when a human addresses it directly in Slack.
 
 Both PM and worker still talk to humans in Slack — "orchestrator" is just a config role, not a different runtime.
 
@@ -76,11 +76,24 @@ A durable record of work delegated from a PM to a worker. Backed by DynamoDB (st
 The PM-bot-to-worker-bot handoff. When `delegation.enabled: true` in `fleet.yaml`, the PM:
 
 1. Creates a [task ledger](#task-ledger) entry
-2. Posts a delegation envelope in a Slack channel mentioning the worker
-3. The worker acknowledges and ships the work
-4. The PM is notified via the [wake pipeline](./ARCHITECTURE.md#wake-pipeline) and closes the loop
+2. Publishes a delegation event on the **NATS bus** targeting the worker (no Slack envelope — NATS is the transport)
+3. The worker's NATS subscriber receives the event, auto-acks in DDB, and wakes the worker OpenClaw session
+4. The worker acknowledges, ships the work, and calls `fleetmind task ship` to publish a `ship` event
+5. The PM is notified via the [wake pipeline](./ARCHITECTURE.md#wake-pipeline) and closes the loop
 
-For the lifecycle flags (`shipped-is-done` vs `requires-human-signoff`), wake pipeline wiring, and sweep resilience layer, see [ARCHITECTURE.md](./ARCHITECTURE.md). For setup: [integration/delegation.md](./integration/delegation.md).
+For the lifecycle flags (`shipped-is-done` vs `requires-human-signoff`), wake pipeline wiring, and sweep resilience layer, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
+## Self-start (worker-initiated tasks)
+
+A worker can start a task on its own initiative without going through the PM delegation path. **Self-start is triggered by a direct human request to the worker in Slack** — not by any ticket-tracker automation.
+
+Typical flow:
+
+1. A human messages the worker bot directly in Slack (e.g. "@worker-bot, please refactor the auth module")
+2. The worker creates its own task ledger row and posts a Slack notice acknowledging the self-started task
+3. The worker ships the work and calls `fleetmind task ship` when done
+
+No PM delegation, no ticket-tracker hook, and no automated trigger is assumed or required. A tracker ticket URL (from Linear, Jira, or any other system) _may_ be referenced in the Slack message as context — but the fleetmind core does not poll or subscribe to any external tracker. Worker self-start is a pure Slack → ledger flow.
 
 ## Workspace (disambiguation)
 
@@ -94,6 +107,8 @@ These are unrelated concepts that happen to share a name. When in doubt, the con
 ## Render
 
 `fleetmind render <fleet.yaml>` reads the fleet definition and writes per-agent `openclaw.json` slices plus derived Terraform variables. Nothing is pushed to EC2. Render is idempotent and safe to re-run — it's what `push fleet` does first under the hood.
+
+`fleetmind render --check <fleet.yaml>` performs a **dry-run validation** (lint pass) without writing output files. This is the correct pre-apply check; there is no separate `fleetmind validate` subcommand.
 
 ## Push
 

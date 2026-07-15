@@ -95,7 +95,7 @@ agents:
     # FleetMind is provider-neutral: `model` is a "provider/model" string and
     # OpenClaw makes the call. Change the prefix (openai/…, google/…) to switch
     # providers; `fleetmind secrets populate` then stages that provider's key.
-    model: anthropic/claude-haiku-4-5
+    model: anthropic/claude-sonnet-4-6
     plugins:
       - anthropic
     params:

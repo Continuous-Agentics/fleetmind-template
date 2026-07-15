@@ -54,7 +54,7 @@ delegation:
 
 agents:
   defaults:
-    model: anthropic/claude-haiku-4-5
+    model: anthropic/claude-sonnet-4-6
     workspace_base: /opt/openclaw/workspace
     plugins:
       - anthropic
@@ -88,7 +88,7 @@ agents:
           - name: pm-sweep-worker
             worker_id: worker
             every: 5m
-            model: anthropic/claude-haiku-4-5
+            model: anthropic/claude-sonnet-4-6
 
     - id: worker
       name: "Worker Bot"

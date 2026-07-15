@@ -113,7 +113,7 @@ delegation:
 agents:
   # Defaults applied to all agents unless overridden.
   defaults:
-    model: anthropic/claude-haiku-4-5
+    model: anthropic/claude-sonnet-4-6
     workspace_base: /opt/openclaw/workspace
     plugins:
       - anthropic
@@ -161,7 +161,7 @@ agents:
           - name: conductor-sweep-forge
             worker_id: forge
             every: 5m              # check for task completions every 5 minutes
-            model: anthropic/claude-haiku-4-5
+            model: anthropic/claude-sonnet-4-6
 
     # ── Worker bot ─────────────────────────────────────────────────────────
     - id: forge

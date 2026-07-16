@@ -37,7 +37,7 @@ fleetmind-template/
 - AWS account with admin or equivalent permissions
 - Terraform `>= 1.5`
 - Node.js `>= 22`
-- `@continuous-agentics/fleetmind >= 0.9.0` CLI: `npm install -g @continuous-agentics/fleetmind` *(requires GitHub Packages auth - see the [Fleetmind README](https://github.com/Continuous-Agentics/fleetmind))*
+- `@continuous-agentics/fleetmind >= 0.10.0` CLI: `npm install -g @continuous-agentics/fleetmind` *(requires GitHub Packages auth - see the [Fleetmind README](https://github.com/Continuous-Agentics/fleetmind))*
 - Slack workspace admin (for creating per-bot Slack apps)
 
 ## One-time setup per operator

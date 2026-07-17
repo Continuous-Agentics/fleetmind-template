@@ -1,10 +1,10 @@
 # FleetMind Quickstart
 
-This is the narrative happy-path for bringing up a working 2-bot fleet. First-time bring-up realistically takes *~20–30 minutes* end-to-end — of which roughly half is clicking through the Slack UI to create two apps and copy four tokens. Once Slack is set up and AWS bootstrap is done, the iteration loop drops to about a minute (`render` + `push fleet --restart`). The last step is *"DM your PM bot in Slack and ask it to delegate a task."*
+This is the manual narrative path for bringing up a working 2-bot fleet. First-time bring-up realistically takes *~20–30 minutes* end-to-end — of which roughly half is clicking through the Slack UI to create two apps and copy four tokens. Once Slack is set up and AWS bootstrap is done, the iteration loop drops to about a minute (`render` + `push fleet --restart`). The last step is *"DM your PM bot in Slack and ask it to delegate a task."*
 
 If anything is unfamiliar, see [CONCEPTS.md](./CONCEPTS.md) for the vocabulary. For the comprehensive reference with every option, see [SETUP-A-FLEET.md](./SETUP-A-FLEET.md). When something breaks, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
 
-> **Faster path:** `fleetmind onboard` is an interactive wizard that drives every step below automatically — see [fleetmind-template § Guided onboarding](https://github.com/Continuous-Agentics/fleetmind-template#guided-onboarding-recommended). The manual flow below exists so you can see what's happening under the hood when something goes wrong.
+> **Recommended path:** `fleetmind onboard --fleet fleet.yaml --region us-west-2` is an interactive wizard that drives every step below automatically, including Terraform backend bootstrap, init, validate, plan, and apply. See [fleetmind-template § Guided onboarding](https://github.com/Continuous-Agentics/fleetmind-template#guided-onboarding-recommended). The manual flow below exists so you can see what's happening under the hood when something goes wrong.
 
 ---
 
@@ -220,7 +220,7 @@ instance_type = "t4g.large"  # arm64; use a t3.*/t4.* type if architecture = "x8
 
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "X.Y.Z"   # pin to current stable — `npm view @continuous-agentics/fleetmind version`
+fleetmind_version = "0.10.0"  # pin to current stable
 
 delegation_enabled = true
 enable_interface_endpoints = false
@@ -239,7 +239,7 @@ terraform apply \
   -var-file=workspaces/acme.derived.tfvars
 ```
 
-The template's `main.tf` calls [`module "fleetmind" { source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v0.1.6" ... }`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) — bump `?ref=` in `main.tf` to upgrade the module.
+The template's `main.tf` calls [`module "fleetmind" { source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.0" ... }`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) — bump `?ref=` in `main.tf` to upgrade the module.
 
 Expect ~60–80 resources to add (VPC, NAT, EC2, IAM, SSM params, S3, DynamoDB, EventBridge). Confirm with `yes`. Wait for completion, then for EC2 bootstrap to finish (~3–5 min more — the instances run a multi-stage bootstrap script on first launch).
 

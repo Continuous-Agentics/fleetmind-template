@@ -4,7 +4,7 @@
 > Click [**Use this template**](../../generate) to create your own fleet repo, then clone that.
 > Forking gives you the wrong git history and no clean way to stay current.
 
-Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Create a repo from this template, edit `fleet.yaml` and `COMPANY.md`, and either run the guided wizard or follow the manual steps below.
+Operator-side starter for a [Fleetmind](https://github.com/Continuous-Agentics/fleetmind) fleet. Create a repo from this template, edit `fleet.yaml` and `COMPANY.md`, and run the guided wizard. The manual docs are kept as a reference for troubleshooting and advanced operation.
 
 > **Before onboarding, fill out two files:**
 > 1. *`fleet.yaml`* - declare your agents (PM bot, workers, their personas, models, Slack/GitHub identities)
@@ -42,6 +42,8 @@ fleetmind-template/
 
 ## One-time setup per operator
 
+`fleetmind onboard` can bootstrap the Terraform backend for you. If you need to create the backend manually, use this one-time account setup:
+
 1. *Make sure you're in your fleet repo.* If this repo was created for you, it's already in your org. If you're starting from the `fleetmind-template` source repo, use `gh repo create --template Continuous-Agentics/fleetmind-template <your-org>/<your-fleet>` to spin up a fresh repo first.
 2. *Create a Terraform state backend* (one-time per AWS account). The bucket holds credential-equivalent state, so create it locked-down:
     ```bash
@@ -75,11 +77,11 @@ fleetmind-template/
 
 ## Guided onboarding (recommended)
 
-`fleetmind onboard` is an interactive wizard that walks through every step, collects credentials inline, and drives all the fleetmind commands automatically.
+`fleetmind onboard` is an interactive wizard that walks through every step, collects credentials inline, and drives the FleetMind and Terraform workflow automatically.
 
 ```bash
 # Edit fleet.yaml, COMPANY.md, and workspaces/default.tfvars first, then:
-fleetmind onboard
+fleetmind onboard --fleet fleet.yaml --region us-west-2
 ```
 
 **What it does:**
@@ -93,7 +95,7 @@ fleetmind onboard
 | 5 | Prompts for GitHub App credentials per agent (app_id, installation_id, .pem path) |
 | 6 | Checks/sets the shared GitHub Packages PAT in SSM |
 | 7 | Runs `fleetmind render` |
-| 8 | Prints the exact `terraform init` + `apply` commands and waits for you to run them |
+| 8 | Bootstraps the Terraform backend, then runs `terraform init`, `validate`, `plan`, and optionally `apply` |
 | 9 | Populates Secrets Manager (Slack + Anthropic keys) — **auto-generates `OPENCLAW_HOOKS_TOKEN`** per agent, stored at `<fleet>/agents/<agent>/hooks` in Secrets Manager; required by the NATS wake path |
 | 10 | Stores GitHub App credentials in SSM |
 | 11 | Runs `fleetmind push fleet --restart --upgrade-cli` — activates `fleetmind-nats-<agent>.service` on each host via the path unit |
@@ -103,9 +105,9 @@ Re-running `fleetmind onboard` is safe - completed steps are detected and skippe
 
 ---
 
-## Manual onboarding
+## Manual onboarding reference
 
-If you prefer to run each step yourself, or need to troubleshoot a specific step, see [`docs/QUICKSTART.md`](docs/QUICKSTART.md) for the 30-minute happy path and [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) for the comprehensive every-option reference. Per-topic guides:
+If you need to troubleshoot a specific step or run the pieces yourself, see [`docs/QUICKSTART.md`](docs/QUICKSTART.md) for the manual happy path and [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) for the comprehensive every-option reference. Per-topic guides:
 
 - [`docs/CONCEPTS.md`](docs/CONCEPTS.md) - vocabulary (fleet, agent, workspace, persona, skill, plugin, ContextStore, task ledger, delegation, wake pipeline, sweep, lifecycle, render/push/pull-self)
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md) - narrative happy path, 30-min bring-up
@@ -125,7 +127,7 @@ Bump `?ref=` in `main.tf`:
 source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.0"
 ```
 
-Then `terraform init -upgrade && terraform plan`.
+Then re-run `fleetmind onboard`, or run `terraform init -upgrade && terraform plan` if you are working through the manual reference.
 
 ## Multi-fleet from one repo
 

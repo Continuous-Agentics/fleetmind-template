@@ -1,6 +1,6 @@
 # Setting Up a New FleetMind Fleet
 
-This guide walks through bringing up a new fleet from scratch: defining agents, provisioning AWS infrastructure, wiring Slack apps, deploying workspaces, and verifying the system end-to-end.
+This manual reference walks through bringing up a new fleet from scratch: defining agents, provisioning AWS infrastructure, wiring Slack apps, deploying workspaces, and verifying the system end-to-end.
 
 **Audience:** Someone who has fleetmind installed and an AWS account, and wants to bring up a brand-new fleet.
 
@@ -47,7 +47,7 @@ This guide walks through bringing up a new fleet from scratch: defining agents, 
 
 Operators don't write Terraform from scratch. Create your fleet repo from the [`fleetmind-template`](https://github.com/Continuous-Agentics/fleetmind-template) GitHub template (click **Use this template** in the GitHub UI, then `git clone` your new repo). The template ships:
 
-- `main.tf` — calls [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) via `module "fleetmind" { source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v0.1.6" ... }`. Bump `?ref=` to upgrade the module.
+- `main.tf` — calls [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) via `module "fleetmind" { source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.0" ... }`. Bump `?ref=` to upgrade the module.
 - `variables.tf`, `outputs.tf` — input/output surface, rarely edited.
 - `backend.example.hcl` — copy to `backend.hcl` (gitignored).
 - A starter `fleet.yaml` and `workspaces/default.tfvars`.
@@ -55,7 +55,7 @@ Operators don't write Terraform from scratch. Create your fleet repo from the [`
 
 All commands in the rest of this guide run from the root of that repo.
 
-> **Faster path:** `fleetmind onboard` is an interactive wizard that drives every step below automatically — see [fleetmind-template § Guided onboarding](https://github.com/Continuous-Agentics/fleetmind-template#guided-onboarding-recommended). This guide is the manual reference.
+> **Recommended path:** `fleetmind onboard --fleet fleet.yaml --region us-west-2` is an interactive wizard that drives every step below automatically, including Terraform backend bootstrap, init, validate, plan, and apply. See [fleetmind-template § Guided onboarding](https://github.com/Continuous-Agentics/fleetmind-template#guided-onboarding-recommended). This guide is the manual reference.
 
 ---
 
@@ -85,7 +85,7 @@ The following is a real fleet definition — one orchestrator PM and one worker 
 ```yaml
 # fleet-acme-bots.yaml
 # One PM bot (orchestrator) + one backend worker.
-# Operator workflow (quick reference):
+# Manual operator workflow (quick reference; `fleetmind onboard` runs these steps for you):
 #   fleetmind slack manifests --fleet fleet-acme-bots.yaml --out ./rendered/slack-manifests-acme-bots/
 #   # Create Slack apps from manifests. Fill in slack.channels[] per agent below.
 #   fleetmind render fleet-acme-bots.yaml
@@ -337,7 +337,7 @@ instance_type = "t4g.large"    # arm64 Graviton; pick a t3.*/t4.* if x86_64
 # Software versions pinned to a known-good release.
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.6.3"   # pin to current stable
+fleetmind_version = "0.10.0"  # pin to current stable
 
 # Task-ledger submodule (inter-bot delegation DynamoDB + EventBridge).
 delegation_enabled = true
@@ -437,7 +437,7 @@ terraform apply \
   -var-file=workspaces/acme-bots.derived.tfvars
 ```
 
-The template's `main.tf` calls the [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) module (`v0.1.6`) which materializes the VPC, NAT, EC2 instances, IAM, SSM params, S3 bucket, DynamoDB tables, and EventBridge rules. To upgrade the module, bump `?ref=` in `main.tf`.
+The template's `main.tf` calls the [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) module (`v1.1.0`) which materializes the VPC, NAT, EC2 instances, IAM, SSM params, S3 bucket, DynamoDB tables, and EventBridge rules. To upgrade the module, bump `?ref=` in `main.tf`.
 
 Review the plan. Expect roughly 60–80 resources to add (VPC, subnets, NAT, EC2 instances, IAM roles, SSM parameters, S3 bucket, DynamoDB table, EventBridge rules). Confirm with `yes`.
 

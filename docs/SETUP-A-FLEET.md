@@ -21,14 +21,6 @@ This guide walks through bringing up a new fleet from scratch: defining agents, 
   npm install -g @continuous-agentics/fleetmind
   ```
 
-  fleetmind is published to GitHub Packages under `@continuous-agentics`. You need a GitHub classic PAT with `read:packages` scope to install it (see §3c below for the SSM side; the same PAT goes in your local `~/.npmrc`):
-
-  ```bash
-  echo "@continuous-agentics:registry=https://npm.pkg.github.com" >> ~/.npmrc
-  echo "//npm.pkg.github.com/:_authToken=<YOUR_PAT>" >> ~/.npmrc
-  npm install -g @continuous-agentics/fleetmind
-  ```
-
 ### AWS account
 
 - Admin-level access (or a custom policy covering EC2, VPC, IAM, SSM, Secrets Manager, S3, DynamoDB, EventBridge, and CloudWatch Logs)
@@ -41,7 +33,6 @@ This guide walks through bringing up a new fleet from scratch: defining agents, 
 ### GitHub
 
 - A repo that each bot will operate against (for code, PRs, issues). By default every agent gets a GitHub App; opt a bot out with `github_access: false` in `fleet.yaml` if it never touches code.
-- A GitHub PAT with `read:packages` for installing fleetmind on EC2 instances (required for bootstrapping)
 
 ### Your fleet repo (created from the template)
 
@@ -240,7 +231,7 @@ Key points:
 
 ## 3. One-Time per-Account Setup
 
-> Skip this section if your account already has remote TF state, a lock table, and the GitHub Packages token in SSM.
+> Skip this section if your account already has remote TF state and a lock table.
 
 ### 3a. Create the TF state lock table
 
@@ -270,20 +261,7 @@ aws s3api put-bucket-versioning \
   --versioning-configuration Status=Enabled
 ```
 
-### 3c. Store the GitHub Packages PAT in SSM
-
-EC2 instances pull fleetmind from GitHub Packages during bootstrap. They need a PAT with `read:packages` scope, stored in SSM:
-
-```bash
-# Generate a classic PAT at https://github.com/settings/tokens (read:packages scope)
-aws ssm put-parameter \
-  --name /fleetmind/shared/github-packages-token \
-  --type SecureString \
-  --value <YOUR_PAT> \
-  --region us-west-2
-```
-
-### 3d. Configure the local Terraform backend
+### 3c. Configure the local Terraform backend
 
 From the root of your fleet repo (created from [`fleetmind-template`](https://github.com/Continuous-Agentics/fleetmind-template)):
 
@@ -337,7 +315,7 @@ instance_type = "t4g.large"    # arm64 Graviton; pick a t3.*/t4.* if x86_64
 # Software versions pinned to a known-good release.
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.6.3"   # pin to current stable
+fleetmind_version = "0.10.1"  # pin to current stable
 
 # Task-ledger submodule (inter-bot delegation DynamoDB + EventBridge).
 delegation_enabled = true

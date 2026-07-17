@@ -109,7 +109,31 @@ GH_APP_PEM_FILE=~/Downloads/my-bot.pem \
 
 When provisioning a new agent (every agent gets a GitHub App unless it sets `github_access: false`):
 
-### Step 1 — Create the app in the GitHub UI
+### Recommended — use the manifest flow
+
+`fleetmind github-app create` opens GitHub's manifest flow, pre-fills the app name and permissions, guides you through installation, and stores the resulting credentials under the agent's SSM path.
+
+```bash
+fleetmind github-app create \
+  --fleet <fleet_name-or-fleet.yaml> \
+  --agent <agent_id> \
+  --owner <github_org>
+```
+
+Examples:
+
+```bash
+fleetmind github-app create --fleet acme-bots --agent forge --owner acme-corp
+fleetmind github-app create --fleet fleet.yaml --agent conductor --owner acme-corp
+```
+
+Use this path for new agents unless your environment cannot open the browser-based GitHub manifest callback. If the browser flow is interrupted, rerun the command; if GitHub created an app but credentials were not stored, either rerun after deleting the partial app in GitHub or use the manual fallback below with the app's IDs and private key.
+
+### Manual fallback
+
+Use the manual path when the manifest flow is unavailable, when you need to inspect every GitHub UI setting, or when you are rotating credentials for an existing app.
+
+#### Step 1 — Create the app in the GitHub UI
 
 1. Navigate to your GitHub org: `https://github.com/organizations/<org>/settings/apps/new`
 2. Fill in:
@@ -128,11 +152,11 @@ When provisioning a new agent (every agent gets a GitHub App unless it sets `git
 
 > Add Workflows or Variables permissions only if your agent needs them — the defaults above are intentionally minimal.
 
-### Step 2 — Generate a private key
+#### Step 2 — Generate a private key
 
 On the app's settings page, scroll to **Private keys** and click **Generate a private key**. A `.pem` file downloads to your machine.
 
-### Step 3 — Install on the project repo
+#### Step 3 — Install on the project repo
 
 1. In the app settings, click **Install App** (left sidebar)
 2. Click **Install** next to your org
@@ -141,7 +165,7 @@ On the app's settings page, scroll to **Private keys** and click **Generate a pr
 5. Note the **Installation ID** from the URL:
    `https://github.com/organizations/<org>/settings/installations/<INSTALLATION_ID>`
 
-### Step 4 — Store credentials in SSM
+#### Step 4 — Store credentials in SSM
 
 > **`--fleet` accepts either a fleet name (`acme-bots`) or a path to the fleet YAML
 > (`fleet-acme-bots.yaml`).** Both forms are equivalent — the CLI resolver tries
@@ -179,7 +203,7 @@ Both methods store:
 
 The operation is idempotent — safe to re-run if you rotate the private key.
 
-### Step 5 — Verify
+#### Step 5 — Verify
 
 SSH into the agent EC2 and run:
 
@@ -187,9 +211,3 @@ SSH into the agent EC2 and run:
 gh-app-token
 # Should print a token string to stdout, and "Token expires: ..." to stderr
 ```
-
----
-
-## Phase 2 (Planned)
-
-Phase 2 will add `fleetmind github-app create` that uses the GitHub App manifest flow to semi-automate Steps 1–3 above. Tracked in issue #<N>.

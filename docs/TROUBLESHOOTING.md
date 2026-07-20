@@ -2,42 +2,35 @@
 
 Symptom → cause → fix, for the things that go wrong at 2am. Organized by category.
 
-If a problem isn't listed here, [docs/SETUP-A-FLEET.md](./SETUP-A-FLEET.md) and [docs/OPERATING.md](./OPERATING.md) have deeper diagnostic detail, and [docs/integration/delegation.md](./integration/delegation.md) covers delegation-specific failures.
+If a problem isn't listed here, [docs/SETUP-A-FLEET.md](./SETUP-A-FLEET.md), [docs/ONBOARD-TROUBLESHOOTING.md](./ONBOARD-TROUBLESHOOTING.md), and [docs/OPERATING.md](./OPERATING.md) have deeper diagnostic detail.
 
 ---
 
 ## Install & auth
 
-### `npm install -g @continuous-agentics/fleetmind` returns 404
+### `npm install -g @continuous-agentics/fleetmind` fails
 
-**Cause:** fleetmind is a private GitHub Packages scoped package. Without a `~/.npmrc` entry that points the `@continuous-agentics` scope at GitHub Packages and authenticates with a PAT, npm hits the public registry, doesn't find it, and 404s.
+**Cause:** npm cannot reach the public registry, the package name is mistyped, or the local npm cache is stale.
 
 **Fix:**
 
 ```bash
-# Generate a classic PAT at https://github.com/settings/tokens with read:packages scope
-echo "@continuous-agentics:registry=https://npm.pkg.github.com" >> ~/.npmrc
-echo "//npm.pkg.github.com/:_authToken=<YOUR_PAT>" >> ~/.npmrc
+npm view @continuous-agentics/fleetmind version
+npm cache verify
 npm install -g @continuous-agentics/fleetmind
 ```
 
-If you used a fine-grained PAT and it still fails, switch to a classic PAT — GitHub Packages does not support fine-grained PATs for `read:packages`.
-
 ### EC2 bootstrap fails to install fleetmind
 
-**Symptom:** `aws ec2 get-console-output` shows `npm ERR! 404 Not Found - GET https://npm.pkg.github.com/@continuous-agentics%2ffleetmind`.
+**Symptom:** `aws ec2 get-console-output` shows npm install failures for `@continuous-agentics/fleetmind`.
 
-**Cause:** The PAT in SSM at `/fleetmind/shared/github-packages-token` is missing, expired, or lacks `read:packages` scope.
+**Cause:** The EC2 host cannot reach npm, Node/npm failed to install, or `fleetmind_version` points at a version that does not exist in npm.
 
 **Fix:**
 
 ```bash
-aws ssm put-parameter \
-  --name /fleetmind/shared/github-packages-token \
-  --type SecureString \
-  --value <NEW_PAT> \
-  --region us-west-2 \
-  --overwrite
+npm view @continuous-agentics/fleetmind versions --json
+rg -n "fleetmind_version" workspaces/*.tfvars variables.tf
 ```
 
 Then terminate the failed instance (`terraform taint <resource>` + `terraform apply`) so it bootstraps fresh.

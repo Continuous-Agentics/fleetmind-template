@@ -284,7 +284,7 @@ Every push produces an `<agent>.manifest.json` alongside the tarball:
 {
   "agent_id": "pm",
   "fleet_name": "my-fleet",
-  "fleetmind_version": "0.6.3",
+  "fleetmind_version": "0.10.4",
   "rendered_at": "2026-05-12T21:30:00Z",
   "tarball": {
     "filename": "pm.tar.gz",

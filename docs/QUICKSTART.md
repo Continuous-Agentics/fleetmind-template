@@ -12,11 +12,11 @@ If anything is unfamiliar, see [CONCEPTS.md](./CONCEPTS.md) for the vocabulary. 
 
 This fast-path assumes you have:
 
-- **fleetmind CLI** installed locally (`npm install -g @continuous-agentics/fleetmind` — see [README.md](../README.md) for the `~/.npmrc` PAT setup if `npm install` 404s)
+- **fleetmind CLI** installed locally (`npm install -g @continuous-agentics/fleetmind`)
 - **AWS CLI v2** configured for your target account, with admin or equivalent permissions
 - **Terraform ≥ 1.5** (`tfenv` works fine for managing the version)
 - **Slack workspace** admin access (you'll create apps and channels)
-- **One-time AWS account setup done**: TF state S3 bucket, DynamoDB lock table, GitHub Packages PAT stored in SSM at `/fleetmind/shared/github-packages-token`. If not, jump to [§First-time setup](#first-time-setup-cold-start) at the bottom, then come back.
+- **One-time AWS account setup done**: TF state S3 bucket and DynamoDB lock table. If not, jump to [§First-time setup](#first-time-setup-cold-start) at the bottom, then come back.
 - **Your fleet repo created from [`fleetmind-template`](https://github.com/Continuous-Agentics/fleetmind-template)** (click **Use this template** in the GitHub UI, then `git clone` your new repo). The template ships `main.tf` (which calls [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind)), `variables.tf`, `outputs.tf`, `backend.example.hcl`, and a starter `fleet.yaml` + `workspaces/default.tfvars`.
 
 **`cd` into your fleet repo before running anything below — every command in this guide is relative to that directory:**
@@ -220,7 +220,7 @@ instance_type = "t4g.large"  # arm64; use a t3.*/t4.* type if architecture = "x8
 
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "X.Y.Z"   # pin to current stable — `npm view @continuous-agentics/fleetmind version`
+fleetmind_version = "0.10.4"  # pin to current stable — `npm view @continuous-agentics/fleetmind version`
 
 delegation_enabled = true
 enable_interface_endpoints = false
@@ -367,7 +367,7 @@ See [OPERATING.md](./OPERATING.md) for the full operations reference (dry-run, s
 
 ## First-time setup (cold start)
 
-If `npm install -g @continuous-agentics/fleetmind` failed with 404, or you have no Terraform state bucket, or you've never used fleetmind in this AWS account, do these one-time steps first. They only need to happen once per account/operator.
+If you have no Terraform state bucket, or you've never used fleetmind in this AWS account, do these one-time steps first. They only need to happen once per account/operator.
 
 ### a. Terraform backend config (per operator clone of fleetmind-template)
 
@@ -381,29 +381,15 @@ terraform init -backend-config=backend.hcl
 
 `backend.hcl` is gitignored. The bucket and lock table referenced here are created in §d below; if they don't exist yet, do §d first then come back and run `terraform init`.
 
-### b. GitHub Packages PAT (per operator)
+### b. Install FleetMind locally
 
-fleetmind is published to GitHub Packages as a private scoped package. Generate a classic PAT at [github.com/settings/tokens](https://github.com/settings/tokens) with `read:packages` scope, then:
+FleetMind is published to npm:
 
 ```bash
-echo "@continuous-agentics:registry=https://npm.pkg.github.com" >> ~/.npmrc
-echo "//npm.pkg.github.com/:_authToken=<YOUR_PAT>" >> ~/.npmrc
 npm install -g @continuous-agentics/fleetmind
 ```
 
-### c. Store the PAT in SSM (one-time per AWS account)
-
-EC2 instances also need a PAT during bootstrap to install fleetmind:
-
-```bash
-aws ssm put-parameter \
-  --name /fleetmind/shared/github-packages-token \
-  --type SecureString \
-  --value <YOUR_PAT> \
-  --region us-west-2
-```
-
-### d. Terraform state bucket + lock table (one-time per AWS account)
+### c. Terraform state bucket + lock table (one-time per AWS account)
 
 ```bash
 aws s3api create-bucket \

@@ -37,7 +37,7 @@ fleetmind-template/
 - AWS account with admin or equivalent permissions
 - Terraform `>= 1.5`
 - Node.js `>= 22`
-- `@continuous-agentics/fleetmind >= 0.10.0` CLI: `npm install -g @continuous-agentics/fleetmind` *(requires GitHub Packages auth - see the [Fleetmind README](https://github.com/Continuous-Agentics/fleetmind))*
+- `@continuous-agentics/fleetmind >= 0.10.4` CLI: `npm install -g @continuous-agentics/fleetmind`
 - Slack workspace admin (for creating per-bot Slack apps)
 
 ## One-time setup per operator
@@ -91,7 +91,7 @@ fleetmind onboard
 | 3 | Prompts for Slack credentials per agent (bot token, signing secret, app token, channel IDs) |
 | 4 | Discovers `bot_user_id`s via Slack `auth.test` |
 | 5 | Prompts for GitHub App credentials per agent (app_id, installation_id, .pem path) |
-| 6 | Checks/sets the shared GitHub Packages PAT in SSM |
+| 6 | Confirms the fleet can install the public FleetMind npm package during bootstrap |
 | 7 | Runs `fleetmind render` |
 | 8 | Prints the exact `terraform init` + `apply` commands and waits for you to run them |
 | 9 | Populates Secrets Manager (Slack + Anthropic keys) — **auto-generates `OPENCLAW_HOOKS_TOKEN`** per agent, stored at `<fleet>/agents/<agent>/hooks` in Secrets Manager; required by the NATS wake path |
@@ -110,10 +110,12 @@ If you prefer to run each step yourself, or need to troubleshoot a specific step
 - [`docs/CONCEPTS.md`](docs/CONCEPTS.md) - vocabulary (fleet, agent, workspace, persona, skill, plugin, ContextStore, task ledger, delegation, wake pipeline, sweep, lifecycle, render/push/pull-self)
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md) - narrative happy path, 30-min bring-up
 - [`docs/SETUP-A-FLEET.md`](docs/SETUP-A-FLEET.md) - comprehensive bring-up reference
+- [`docs/ONBOARD-TROUBLESHOOTING.md`](docs/ONBOARD-TROUBLESHOOTING.md) - step-by-step `fleetmind onboard` failure and recovery guide
 - [`docs/MULTI-FLEET.md`](docs/MULTI-FLEET.md) - running multiple fleets in one AWS account
 - [`docs/GITHUB-APPS.md`](docs/GITHUB-APPS.md) - per-agent GitHub App credential flow
 - [`docs/OPERATING.md`](docs/OPERATING.md) - day-to-day ops: push, pull-self, single-agent deploys, restart semantics, SSM-into-bot, log inspection
 - [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) - symptom → cause → fix for install, Slack, Terraform, deploy, delegation, runtime failures
+- [`CHANGELOG.md`](CHANGELOG.md) - template change history and upgrade notes
 
 ---
 
@@ -122,7 +124,7 @@ If you prefer to run each step yourself, or need to troubleshoot a specific step
 Bump `?ref=` in `main.tf`:
 
 ```hcl
-source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.0"
+source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.5"
 ```
 
 Then `terraform init -upgrade && terraform plan`.

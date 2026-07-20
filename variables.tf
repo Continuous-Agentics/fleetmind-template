@@ -79,7 +79,7 @@ variable "node_version" {
 variable "fleetmind_version" {
   description = "Fleetmind CLI version pin. Must be an exact version (no 'latest') and must match the renderer that produced the .derived.tfvars in this checkout."
   type        = string
-  default     = "0.10.0"
+  default     = "0.10.4"
 }
 
 variable "delegation_enabled" {

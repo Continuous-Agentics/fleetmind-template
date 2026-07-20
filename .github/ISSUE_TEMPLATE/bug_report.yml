@@ -1,0 +1,26 @@
+name: Bug report
+description: Report a problem with the fleet template.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: |
+        FleetMind version:
+        terraform-aws-fleetmind ref:
+        Terraform version:
+        AWS region:
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+

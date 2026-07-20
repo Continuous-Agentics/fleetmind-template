@@ -13,7 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Documented the public npm install path for FleetMind and removed default GitHub Packages bootstrap guidance.
 - Added `docs/ONBOARD-TROUBLESHOOTING.md` with step-by-step recovery notes for `fleetmind onboard`.
 - Updated `docs/GITHUB-APPS.md` to make `fleetmind github-app create` the recommended GitHub App provisioning path.
-- Bumped the template FleetMind pin from `0.10.0` to `0.10.1`.
+- Bumped the template FleetMind pin from `0.10.0` to `0.10.4`.
+- Bumped the Terraform module pin to `v1.1.5` for public npm bootstrap and no-delegation deploy-staging reads.
 
 ## 2026-07-16 Snapshot
 

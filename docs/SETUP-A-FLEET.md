@@ -315,7 +315,7 @@ instance_type = "t4g.large"    # arm64 Graviton; pick a t3.*/t4.* if x86_64
 # Software versions pinned to a known-good release.
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.10.1"  # pin to current stable
+fleetmind_version = "0.10.4"  # pin to current stable
 
 # Task-ledger submodule (inter-bot delegation DynamoDB + EventBridge).
 delegation_enabled = true

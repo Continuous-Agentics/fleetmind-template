@@ -37,7 +37,7 @@ fleetmind-template/
 - AWS account with admin or equivalent permissions
 - Terraform `>= 1.5`
 - Node.js `>= 22`
-- `@continuous-agentics/fleetmind >= 0.10.1` CLI: `npm install -g @continuous-agentics/fleetmind`
+- `@continuous-agentics/fleetmind >= 0.10.4` CLI: `npm install -g @continuous-agentics/fleetmind`
 - Slack workspace admin (for creating per-bot Slack apps)
 
 ## One-time setup per operator
@@ -124,7 +124,7 @@ If you prefer to run each step yourself, or need to troubleshoot a specific step
 Bump `?ref=` in `main.tf`:
 
 ```hcl
-source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.0"
+source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.5"
 ```
 
 Then `terraform init -upgrade && terraform plan`.

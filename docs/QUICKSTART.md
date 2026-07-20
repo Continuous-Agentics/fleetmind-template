@@ -220,7 +220,7 @@ instance_type = "t4g.large"  # arm64; use a t3.*/t4.* type if architecture = "x8
 
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.10.1"  # pin to current stable — `npm view @continuous-agentics/fleetmind version`
+fleetmind_version = "0.10.4"  # pin to current stable — `npm view @continuous-agentics/fleetmind version`
 
 delegation_enabled = true
 enable_interface_endpoints = false

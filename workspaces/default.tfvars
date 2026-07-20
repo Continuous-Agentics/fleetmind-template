@@ -24,7 +24,7 @@ agent_instance_types = {
 # ── Software pins ───────────────────────────────────────────────────────────
 openclaw_version  = "latest"
 node_version      = "22"
-fleetmind_version = "0.10.1"
+fleetmind_version = "0.10.4"
 
 # ── Delegation substrate ────────────────────────────────────────────────────
 # Task-ledger DDB + S3 narratives. Default true.

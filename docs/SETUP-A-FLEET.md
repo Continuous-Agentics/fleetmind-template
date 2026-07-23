@@ -23,7 +23,7 @@ This guide walks through bringing up a new fleet from scratch: defining agents, 
 
 ### AWS account
 
-- Admin-level access (or a custom policy covering EC2, VPC, IAM, SSM, Secrets Manager, S3, DynamoDB, EventBridge, and CloudWatch Logs)
+- Admin-level access (or a custom policy covering EC2, VPC, IAM, SSM, Secrets Manager, S3, DynamoDB, and CloudWatch Logs)
 - The target region ready (default: `us-west-2`)
 
 ### Slack workspace
@@ -38,7 +38,7 @@ This guide walks through bringing up a new fleet from scratch: defining agents, 
 
 Operators don't write Terraform from scratch. Create your fleet repo from the [`fleetmind-template`](https://github.com/Continuous-Agentics/fleetmind-template) GitHub template (click **Use this template** in the GitHub UI, then `git clone` your new repo). The template ships:
 
-- `main.tf` — calls [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) via `module "fleetmind" { source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v0.1.6" ... }`. Bump `?ref=` to upgrade the module.
+- `main.tf` — calls [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) via `module "fleetmind" { source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.5" ... }`. Bump `?ref=` to upgrade the module.
 - `variables.tf`, `outputs.tf` — input/output surface, rarely edited.
 - `backend.example.hcl` — copy to `backend.hcl` (gitignored).
 - A starter `fleet.yaml` and `workspaces/default.tfvars`.
@@ -317,7 +317,7 @@ openclaw_version  = "latest"
 node_version      = "22"
 fleetmind_version = "0.10.4"  # pin to current stable
 
-# Task-ledger submodule (inter-bot delegation DynamoDB + EventBridge).
+# Task-ledger submodule (inter-bot delegation DynamoDB + S3; terminal events reach the PM over NATS push, not EventBridge).
 delegation_enabled = true
 
 # VPC interface endpoints for SSM/SecretsManager (avoids NAT for those calls).
@@ -415,9 +415,9 @@ terraform apply \
   -var-file=workspaces/acme-bots.derived.tfvars
 ```
 
-The template's `main.tf` calls the [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) module (`v0.1.6`) which materializes the VPC, NAT, EC2 instances, IAM, SSM params, S3 bucket, DynamoDB tables, and EventBridge rules. To upgrade the module, bump `?ref=` in `main.tf`.
+The template's `main.tf` calls the [`terraform-aws-fleetmind`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) module (`v1.1.5`) which materializes the VPC, NAT, EC2 instances, IAM, SSM params, S3 bucket, and DynamoDB tables. To upgrade the module, bump `?ref=` in `main.tf`.
 
-Review the plan. Expect roughly 60–80 resources to add (VPC, subnets, NAT, EC2 instances, IAM roles, SSM parameters, S3 bucket, DynamoDB table, EventBridge rules). Confirm with `yes`.
+Review the plan. Expect roughly 60–80 resources to add (VPC, subnets, NAT, EC2 instances, IAM roles, SSM parameters, S3 bucket, DynamoDB table). Confirm with `yes`.
 
 ### 4h. Wait for bootstrap (~3–5 minutes)
 

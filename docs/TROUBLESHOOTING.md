@@ -335,13 +335,17 @@ Then re-run the lifecycle transition (`fleetmind task ship --task-id <hex> --wor
 
 ### PM bot not waking on terminal events
 
-**Cause:** Two wake paths exist. The fast path is event-driven (DDB Stream → EventBridge Pipe → SSM Run Command → `ddb-wake.sh` on PM). The resilience path is polling (PM bot's OpenClaw cron jobs sweep DDB).
+**Cause:** Two wake paths exist. The fast path is push-based: a worker's terminal status transition is published to NATS, and the PM's `fleetmind-nats-<pm>.service` (`fleetmind nats subscribe --mode pm`) receives it and wakes the PM session by calling `POST /hooks/wake` on the gateway. The resilience path is polling (PM bot's OpenClaw cron jobs sweep DDB). See [ARCHITECTURE.md § Wake pipeline](./ARCHITECTURE.md#wake-pipeline) for the full flow.
+
+> **History:** an earlier version used a DDB Stream → EventBridge Pipe → SSM Run Command pipeline instead of NATS push. That path (and its `ledger-pipe-dlq` / `ledger-wake-dlq` DLQs) was removed; the module no longer provisions any EventBridge/SSM/DLQ wake infrastructure.
 
 **Fix:**
 
-1. **DDB stream wake** (fast):
-   - Check Pipe DLQ (`{prefix}ledger-pipe-dlq`) and wake DLQ (`{prefix}ledger-wake-dlq`) in the AWS console
-   - Common causes: SSM `SendCommand` IAM perm missing, wrong tag value for instance targeting, session key not in `sessions.json` on the PM
+1. **NATS push wake** (fast):
+   - Confirm `fleetmind-nats-<pm>.service` is active on the PM instance: `systemctl status fleetmind-nats-pm`
+   - Check its logs for connection/subscribe errors: `journalctl -u fleetmind-nats-pm -n 50`
+   - Confirm `hooks.token` is set in the PM's `openclaw.json` and is distinct from `gateway.auth.token` — the gateway returns 401 on `/hooks/wake` if they match
+   - Common causes: NATS subscriber service not installed/started, `OPENCLAW_HOOKS_TOKEN` missing or stale, gateway restarting when the event fired
 2. **WORKER_SWEEP** (polling):
    - SSM into the PM instance
    - `openclaw cron list` — confirm sweep jobs exist

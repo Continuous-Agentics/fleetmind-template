@@ -239,9 +239,9 @@ terraform apply \
   -var-file=workspaces/acme.derived.tfvars
 ```
 
-The template's `main.tf` calls [`module "fleetmind" { source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v0.1.6" ... }`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) — bump `?ref=` in `main.tf` to upgrade the module.
+The template's `main.tf` calls [`module "fleetmind" { source = "github.com/Continuous-Agentics/terraform-aws-fleetmind?ref=v1.1.5" ... }`](https://github.com/Continuous-Agentics/terraform-aws-fleetmind) — bump `?ref=` in `main.tf` to upgrade the module.
 
-Expect ~60–80 resources to add (VPC, NAT, EC2, IAM, SSM params, S3, DynamoDB, EventBridge). Confirm with `yes`. Wait for completion, then for EC2 bootstrap to finish (~3–5 min more — the instances run a multi-stage bootstrap script on first launch).
+Expect ~60–80 resources to add (VPC, NAT, EC2, IAM, SSM params, S3, DynamoDB). Confirm with `yes`. Wait for completion, then for EC2 bootstrap to finish (~3–5 min more — the instances run a multi-stage bootstrap script on first launch).
 
 Check bootstrap completion:
 

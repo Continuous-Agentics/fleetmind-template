@@ -3,14 +3,24 @@ name: Terraform Plan
 # Runs `terraform validate` + `terraform fmt -check` on every PR, and posts
 # the `terraform plan` output as a PR comment. Apply happens manually from
 # an operator workstation, not from CI.
-
+#
+# Check-name invariant: the branch protection ruleset on `main` requires the
+# status check named "terraform fmt + validate + plan" (the `plan` job's
+# `name:` below). That name must always be reported by GitHub for every PR,
+# or the PR is stuck "blocked" waiting on a check that will never run.
+#
+# To guarantee that, this workflow triggers on *every* pull_request (no
+# `paths:` filter on the trigger) so the `plan` job is always scheduled and
+# always reports a conclusion (success/failure) for the required check.
+# Terraform-specific work (setup/fmt/init/validate) is instead skipped at
+# the *step* level via `if: steps.filter.outputs.terraform == 'true'` for
+# PRs that don't touch Terraform-relevant files (e.g. docs-only changes).
+# Skipped steps do not fail the job, so docs-only PRs get a fast "success"
+# for the required check without doing any Terraform work, while PRs that
+# touch `.tf`/`.tfvars`/`fleet.yaml`/this workflow file still get the full
+# fmt + validate + plan treatment.
 on:
   pull_request:
-    paths:
-      - "**.tf"
-      - "**.tfvars"
-      - "fleet.yaml"
-      - ".github/workflows/plan.yml"
 
 permissions:
   contents: read
@@ -25,19 +35,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Determine whether this PR touches anything Terraform-relevant. Keep
+      # this pattern list in sync with what previously lived in the
+      # workflow's `on.pull_request.paths` filter below, so the *effective*
+      # scope of "full validation" is unchanged for Terraform changes.
+      - name: Detect Terraform-relevant changes
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            terraform:
+              - "**.tf"
+              - "**.tfvars"
+              - "fleet.yaml"
+              - ".github/workflows/plan.yml"
+
       # Pin the Terraform version from .terraform-version so CI matches what
       # operators run locally (tfenv). The v1.0.0 module uses cross-variable
       # references in validation blocks, which require Terraform >= 1.9.
       - name: Read .terraform-version
         id: tfver
+        if: steps.filter.outputs.terraform == 'true'
         run: echo "version=$(cat .terraform-version)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Terraform
+        if: steps.filter.outputs.terraform == 'true'
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ steps.tfver.outputs.version }}
 
       - name: terraform fmt
+        if: steps.filter.outputs.terraform == 'true'
         run: terraform fmt -recursive -check -diff
 
       # The fleetmind module lives in a separate PRIVATE repo
@@ -47,6 +75,7 @@ jobs:
       # rewrite github.com clones to use it.
       - name: Mint module-reader token
         id: app-token
+        if: steps.filter.outputs.terraform == 'true'
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.CI_APP_ID }}
@@ -55,13 +84,16 @@ jobs:
           repositories: terraform-aws-fleetmind
 
       - name: Allow Terraform to clone the private module
+        if: steps.filter.outputs.terraform == 'true'
         run: |
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
 
       - name: terraform init (no backend)
+        if: steps.filter.outputs.terraform == 'true'
         run: terraform init -backend=false
 
       - name: terraform validate
+        if: steps.filter.outputs.terraform == 'true'
         run: terraform validate
 
       # `terraform plan` is intentionally omitted from default CI — it requires
@@ -70,10 +102,37 @@ jobs:
       # role or AWS access key secrets.
       #
       # - name: Configure AWS credentials
+      #   if: steps.filter.outputs.terraform == 'true'
       #   uses: aws-actions/configure-aws-credentials@v4
       #   with:
       #     role-to-assume: arn:aws:iam::ACCOUNT:role/fleet-plan
       #     aws-region: us-west-2
       #
       # - name: terraform plan
+      #   if: steps.filter.outputs.terraform == 'true'
       #   run: terraform plan -var-file=workspaces/default.tfvars
+
+      - name: Skip reason (docs-only change)
+        if: steps.filter.outputs.terraform != 'true'
+        run: |
+          echo "No Terraform-relevant files changed (**.tf, **.tfvars, fleet.yaml, .github/workflows/plan.yml)."
+          echo "Skipping Terraform setup/fmt/init/validate for this docs-only change."
+
+  lint-workflow:
+    # Not part of the required-status-check set for main (see rulesets); this
+    # is a fast, non-blocking sanity check that runs on every PR (cheap,
+    # ~seconds) to confirm the workflow YAML in this repo is syntactically
+    # valid and passes actionlint. It exists so a broken edit to this file
+    # is caught immediately instead of silently stopping the `plan` job
+    # (and thus the required "terraform fmt + validate + plan" check) from
+    # ever reporting again.
+    name: lint workflow YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: actionlint
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color

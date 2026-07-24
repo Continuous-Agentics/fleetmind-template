@@ -68,25 +68,9 @@ jobs:
         if: steps.filter.outputs.terraform == 'true'
         run: terraform fmt -recursive -check -diff
 
-      # The fleetmind module lives in a separate PRIVATE repo
-      # (terraform-aws-fleetmind). The default GITHUB_TOKEN only covers this
-      # repo, so `terraform init` cannot clone it. Mint a short-lived,
-      # read-only token from the fleetmind-ci-module-reader GitHub App and
-      # rewrite github.com clones to use it.
-      - name: Mint module-reader token
-        id: app-token
-        if: steps.filter.outputs.terraform == 'true'
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.CI_APP_ID }}
-          private-key: ${{ secrets.CI_APP_PRIVATE_KEY }}
-          owner: Continuous-Agentics
-          repositories: terraform-aws-fleetmind
-
-      - name: Allow Terraform to clone the private module
-        if: steps.filter.outputs.terraform == 'true'
-        run: |
-          git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
+      # terraform-aws-fleetmind is public, so Terraform can clone the pinned
+      # module directly. Template-derived fleet repos need no GitHub App
+      # credentials or Actions secrets for validation.
 
       - name: terraform init (no backend)
         if: steps.filter.outputs.terraform == 'true'
